@@ -252,9 +252,9 @@ Excel::writer()
 - **`time`**: Time fraction or time string (e.g. `'14:30:00'`).
 - **`money`**: Cleans currency symbols (`$`, `₫`, `€`, `¥`) and separators. Configurable `thousands_separator` and `decimal_separator`. Writes formatted currency numbers (`#,##0`).
 - **`percent`**: Automatically parses percentage strings (`'15%'` -> `0.15`) or raw floats. Writes as Excel percent numbers (`0.00%`).
-- **`formula`**: Evaluates or writes Excel formulas (e.g. `'=SUM(A1:A10)'`). Formula injection safe.
+- **`formula`**: Opt-in column for writing trusted executable Excel formulas (e.g. `'=SUM(A1:A10)'`); when reading, returns the formula string or cached value as-is without evaluation.
 - **`link`**: Hyperlink column. Accepts a URL string or array `['url' => 'https://...', 'label' => 'Homepage']`. Rejects unsafe URI schemes like `javascript:`.
-- **`auto`**: Auto-detects cell value type based on content (number, date, boolean, or string).
+- **`auto`**: Preserves native PHP scalar types when writing (numbers as numeric, booleans as boolean, strings as text); does not infer dates or coerce numeric strings. When reading, returns the cell value as-is.
 - **`raw`**: Value as returned by PhpSpreadsheet without casting.
 - **`formatted`**: Cell display string formatted exactly as visible in Excel.
 ---

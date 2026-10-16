@@ -102,10 +102,10 @@ foreach (Excel::stream('huge.xlsx', ['start_row' => 2]) as $rowNum => $row) {
 - `date`: Excel serial conversion (1900 & 1904) or string parsing.
 - `datetime`: full date and time.
 - `time`: time fraction or time string.
-- `auto`: safe type inference; strings always written as text (formula injection guard).
+- `auto`: preserves PHP scalar types (numbers, booleans; strings written as text); no date inference.
 - `percent`: 0.15 = 15%, format `0.00%`.
 - `money`: currency number formatting `#,##0`.
-- `formula`: calculated formulas starting with `=`.
+- `formula`: opt-in trusted formulas starting with `=`; raw value on read.
 - `link`: hyperlinks with safe scheme whitelist (http, https, mailto).
 - `raw`: uncast PhpSpreadsheet value.
 - `formatted`: cell formatted string display (read-only).

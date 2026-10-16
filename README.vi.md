@@ -247,9 +247,9 @@ Excel::writer()
 - **`time`**: Phân số thời gian hoặc chuỗi giờ phút (vd: `'14:30:00'`).
 - **`money`**: Tự động làm sạch ký hiệu tiền tệ (`$`, `₫`, `€`, `¥`) và dấu phân cách. Có thể cấu hình `thousands_separator`, `decimal_separator`. Ghi định dạng tiền tệ (`#,##0`).
 - **`percent`**: Tự động phân tích chuỗi phần trăm (`'15%'` -> `0.15`) hoặc số thực. Ghi định dạng phần trăm Excel (`0.00%`).
-- **`formula`**: Đọc hoặc ghi công thức tính Excel (vd: `'=SUM(A1:A10)'`). Phòng chống độc hại Formula Injection.
+- **`formula`**: Kiểu cột chủ động (opt-in) để ghi công thức Excel tin cậy (vd: `'=SUM(A1:A10)'`); khi đọc, trả về chuỗi công thức hoặc giá trị đã lưu nguyên bản mà không tự tính toán.
 - **`link`**: Cột siêu liên kết (hyperlink). Nhận chuỗi URL hoặc mảng `['url' => 'https://...', 'label' => 'Trang chủ']`. Chặn các scheme độc hại như `javascript:`.
-- **`auto`**: Tự động nhận diện kiểu dữ liệu của ô (số, ngày tháng, boolean hoặc chuỗi).
+- **`auto`**: Giữ nguyên kiểu dữ liệu vô hướng gốc của PHP khi ghi (số thành số, boolean thành boolean, chuỗi thành text); không tự suy diễn ngày tháng và không ép chuỗi số. Khi đọc, trả về nguyên bản giá trị ô.
 - **`raw`**: Giá trị nguyên bản từ PhpSpreadsheet không qua ép kiểu.
 - **`formatted`**: Chuỗi hiển thị của ô đúng như nhìn thấy trên Excel.
 
