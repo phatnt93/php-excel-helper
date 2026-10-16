@@ -1,6 +1,6 @@
 # PHP Excel Helper
 
-[![Latest Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/phatnt93/php-excel-helper)
+[![Latest Version](https://img.shields.io/badge/version-1.1.0-blue.svg)](https://github.com/phatnt93/php-excel-helper)
 [![PHP Version](https://img.shields.io/badge/php-%5E8.1-777bb4.svg)](https://php.net)
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](https://phpstan.org)
 [![Tests](https://img.shields.io/badge/tests-100%25%20passing-brightgreen.svg)](https://phpunit.de)

@@ -25,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Pull-based streaming XMLReader over ZipArchive for low-memory row streaming of large XLSX spreadsheets and lazy O(1) memory streaming for UTF-8 CSV files.
   - Provides `Excel::stream()` generator for reading XLSX and CSV row-by-row with minimal RAM usage.
 - New standalone demonstration example `examples/07_advanced_v1_1_features.php`.
-- Test suite expanded to 257 tests, 872 assertions, 100% passing, line coverage >= 90%.
+- Test suite expanded to 271 tests, 924 assertions, 100% passing, PHPStan level 8 clean, CS-Fixer clean, line coverage >= 90%.
 ## [1.0.0] - 2026-10-16
 
 ### Added
