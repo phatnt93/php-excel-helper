@@ -48,9 +48,11 @@ final class FastXlsxStreamReader
         $headerRow = $options->headerRow;
         $startRow = $options->startRow;
         $endRow = $options->endRow;
+        $is1904 = self::detect1904DateSystem($realPath);
         $globalOptions = [
             'date_format' => $options->dateFormat,
             'datetime_format' => $options->datetimeFormat,
+            'date_system_1904' => $is1904,
             'locale' => $options->locale,
             'trim' => $options->trim,
         ];
@@ -157,9 +159,11 @@ final class FastXlsxStreamReader
         $headerRow = $options->headerRow;
         $startRow = $options->startRow;
         $endRow = $options->endRow;
+        $is1904 = self::detect1904DateSystem($realPath);
         $globalOptions = [
             'date_format' => $options->dateFormat,
             'datetime_format' => $options->datetimeFormat,
+            'date_system_1904' => $is1904,
             'locale' => $options->locale,
             'trim' => $options->trim,
         ];
@@ -333,6 +337,22 @@ final class FastXlsxStreamReader
         }
         $names = array_column($sheets, 'name');
         throw SheetNotFoundException::byName($sheet, $names);
+    }
+    private static function detect1904DateSystem(string $zipPath): bool
+    {
+        $zip = new ZipArchive();
+        if ($zip->open($zipPath) !== true) {
+            return false;
+        }
+
+        $xml = $zip->getFromName('xl/workbook.xml');
+        $zip->close();
+
+        if ($xml === false) {
+            return false;
+        }
+
+        return preg_match('/<workbookPr[^>]+date1904="(?:1|true)"/i', $xml) === 1;
     }
 
     /**

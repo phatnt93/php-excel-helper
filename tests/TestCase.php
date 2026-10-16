@@ -80,6 +80,7 @@ abstract class TestCase extends BaseTestCase
         }
 
         if (isset($options['date_system_1904']) && $options['date_system_1904'] === true) {
+            $spreadsheet->setExcelCalendar(\PhpOffice\PhpSpreadsheet\Shared\Date::CALENDAR_MAC_1904);
             \PhpOffice\PhpSpreadsheet\Shared\Date::setExcelCalendar(\PhpOffice\PhpSpreadsheet\Shared\Date::CALENDAR_MAC_1904);
         }
 

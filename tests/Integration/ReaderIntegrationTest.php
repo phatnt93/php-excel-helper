@@ -112,32 +112,84 @@ final class ReaderIntegrationTest extends TestCase
 
     public function testReadDateSystem1900and1904(): void
     {
+        // 1900 calendar file with serial number 44000
         $path1900 = $this->createSpreadsheetFile([
             ['Birthday'],
-            ['2026-10-16'],
+            [44000],
         ], 'xlsx');
 
+        // Excel::read on 1900
         $res1900 = Excel::read($path1900, [
             'header_row' => 1,
             'columns' => [
                 ['header' => 'Birthday', 'key' => 'birthday', 'type' => 'date'],
             ],
         ]);
-        $this->assertSame('2026-10-16', $res1900->rows()[0]['birthday']);
+        $this->assertSame('2020-06-18', $res1900->rows()[0]['birthday']);
 
-        // 1904 calendar file
+        // Excel::stream on 1900
+        $stream1900 = iterator_to_array(Excel::stream($path1900, [
+            'header_row' => 1,
+            'start_row' => 2,
+            'columns' => [
+                ['header' => 'Birthday', 'key' => 'birthday', 'type' => 'date'],
+            ],
+        ]));
+        $this->assertSame('2020-06-18', array_values($stream1900)[0]['birthday']);
+
+        // Excel::chunk on 1900
+        $chunk1900 = null;
+        Excel::chunk($path1900, [
+            'header_row' => 1,
+            'start_row' => 2,
+            'columns' => [
+                ['header' => 'Birthday', 'key' => 'birthday', 'type' => 'date'],
+            ],
+        ], 10, function (array $rows) use (&$chunk1900): void {
+            $chunk1900 = $rows[0]['birthday'];
+        });
+        $this->assertSame('2020-06-18', $chunk1900);
+
+        // 1904 calendar file with serial number 44000
         $path1904 = $this->createSpreadsheetFile([
             ['Birthday'],
-            ['2026-10-16'],
+            [44000],
         ], 'xlsx', 'Sheet1', ['date_system_1904' => true]);
 
+        // Excel::read on 1904
         $res1904 = Excel::read($path1904, [
             'header_row' => 1,
             'columns' => [
                 ['header' => 'Birthday', 'key' => 'birthday', 'type' => 'date'],
             ],
         ]);
-        $this->assertSame('2026-10-16', $res1904->rows()[0]['birthday']);
+        $this->assertSame('2024-06-19', $res1904->rows()[0]['birthday']);
+
+        // Excel::stream on 1904
+        $stream1904 = iterator_to_array(Excel::stream($path1904, [
+            'header_row' => 1,
+            'start_row' => 2,
+            'columns' => [
+                ['header' => 'Birthday', 'key' => 'birthday', 'type' => 'date'],
+            ],
+        ]));
+        $this->assertSame('2024-06-19', array_values($stream1904)[0]['birthday']);
+
+        // Excel::chunk on 1904
+        $chunk1904 = null;
+        Excel::chunk($path1904, [
+            'header_row' => 1,
+            'start_row' => 2,
+            'columns' => [
+                ['header' => 'Birthday', 'key' => 'birthday', 'type' => 'date'],
+            ],
+        ], 10, function (array $rows) use (&$chunk1904): void {
+            $chunk1904 = $rows[0]['birthday'];
+        });
+        $this->assertSame('2024-06-19', $chunk1904);
+
+        // Reset global calendar state
+        \PhpOffice\PhpSpreadsheet\Shared\Date::setExcelCalendar(\PhpOffice\PhpSpreadsheet\Shared\Date::CALENDAR_WINDOWS_1900);
     }
 
     public function testReadStringPreservesLeadingZeros(): void

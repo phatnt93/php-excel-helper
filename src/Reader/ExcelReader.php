@@ -129,9 +129,11 @@ final class ExcelReader
             $highestDataRow = $worksheet->getHighestDataRow();
             $endRow = $opts->endRow !== null ? min($opts->endRow, $highestDataRow) : $highestDataRow;
 
+            $is1904 = $spreadsheet->getExcelCalendar() === \PhpOffice\PhpSpreadsheet\Shared\Date::CALENDAR_MAC_1904;
             $globalOptions = [
                 'date_format' => $opts->dateFormat,
                 'datetime_format' => $opts->datetimeFormat,
+                'date_system_1904' => $is1904,
                 'locale' => $opts->locale,
                 'trim' => $opts->trim,
             ];
@@ -198,6 +200,7 @@ final class ExcelReader
             );
         } finally {
             $spreadsheet->disconnectWorksheets();
+            \PhpOffice\PhpSpreadsheet\Shared\Date::setExcelCalendar(\PhpOffice\PhpSpreadsheet\Shared\Date::CALENDAR_WINDOWS_1900);
         }
     }
 
@@ -354,6 +357,9 @@ final class ExcelReader
                     ? ($spreadsheet->getSheetByName($targetSheetName) ?? $spreadsheet->getActiveSheet())
                     : $spreadsheet->getActiveSheet();
 
+                $is1904 = $spreadsheet->getExcelCalendar() === \PhpOffice\PhpSpreadsheet\Shared\Date::CALENDAR_MAC_1904;
+                $globalOptions['date_system_1904'] = $is1904;
+
                 if ($resolvedColumns === null) {
                     $resolvedColumns = ColumnResolver::resolve($worksheet, $opts);
 
@@ -438,6 +444,7 @@ final class ExcelReader
                     break;
                 }
             } finally {
+                \PhpOffice\PhpSpreadsheet\Shared\Date::setExcelCalendar(\PhpOffice\PhpSpreadsheet\Shared\Date::CALENDAR_WINDOWS_1900);
                 $spreadsheet->disconnectWorksheets();
                 unset($spreadsheet);
             }
