@@ -10,7 +10,7 @@ This guide defines core conventions, architecture, and verification commands for
 - **Primary Goal:** Read and write spreadsheets (xlsx, xls, ods, csv) through plain array configuration — start row/column, typed columns with defaults and validation, row-level error reporting, styled exports — with a parallel fluent builder API.
 - **Reference Standards:** PER Coding Style 2.0 / PSR-12, PSR-4 autoloading (`src/` and `tests/`).
 
-## Architecture Map (planned)
+## Architecture Map (actual)
 
 ```
 src/

@@ -1,0 +1,96 @@
+# php-excel-helper
+
+> Modern, secure and fluent PHP library to read and write Excel/spreadsheet files (xlsx, xls, ods, csv) using intuitive array configurations or fluent builders. Built on top of PhpSpreadsheet.
+
+## Package Info
+- **Composer Package:** `phatnt93/php-excel-helper`
+- **PHP Requirements:** PHP ^8.1
+- **Root Namespace:** `ExcelHelper\`
+- **Core Facade:** `ExcelHelper\Excel`
+
+## Quick Reference
+
+### Read Excel / CSV to Array
+```php
+use ExcelHelper\Excel;
+
+$result = Excel::read('file.xlsx', [
+    'header_row' => 1,
+    'start_row'  => 2,
+    'columns'    => [
+        ['header' => 'ID',     'key' => 'id'],
+        ['header' => 'Name',   'key' => 'name'],
+        ['header' => 'Salary', 'key' => 'salary', 'type' => 'number'],
+        ['header' => 'Date',   'key' => 'date',   'type' => 'date'],
+    ],
+]);
+
+$rows = $result->rows();     // list<array<string, mixed>>
+$errors = $result->errors(); // list<RowError>
+```
+
+### Write Array to Excel / CSV
+```php
+use ExcelHelper\Excel;
+
+Excel::write([
+    'title' => 'REPORT',
+    'columns' => [
+        'id'     => 'ID',
+        'name'   => ['header' => 'Full Name', 'width' => 28],
+        'salary' => ['header' => 'Salary', 'type' => 'number', 'format' => '#,##0'],
+    ],
+    'data' => [
+        ['id' => '001', 'name' => 'Alice', 'salary' => 1500],
+    ],
+    'totals' => ['salary' => 'sum'],
+    'zebra' => true,
+])->save('report.xlsx');
+```
+
+### Process Huge Files in Chunks
+```php
+use ExcelHelper\Excel;
+use ExcelHelper\Reader\ChunkContext;
+
+$summary = Excel::chunk('huge.xlsx', ['columns' => ['A' => 'name']], 1000,
+    function (array $chunkRows, ChunkContext $ctx): void {
+        // Process each batch of 1000 rows
+    }
+);
+```
+
+### Fluent Builders
+```php
+// Read
+$res = Excel::reader('file.xlsx')
+    ->headerRow(1)
+    ->column('A', 'code')
+    ->read();
+
+// Write
+Excel::writer()
+    ->title('List')
+    ->column('name', 'Name')
+    ->data($items)
+    ->save('file.xlsx');
+```
+
+## Available Types
+- `string`: keeps leading zeros, normalizes scientific float notation.
+- `int`: casts integers, rejects fractional floats.
+- `float` / `number`: standard floating point number.
+- `decimal`: string preserving exact decimal precision.
+- `bool`: true/false, 1/0, yes/no, đúng/sai.
+- `date`: Excel serial conversion (1900 & 1904) or string parsing.
+- `datetime`: full date and time.
+- `time`: time fraction or time string.
+- `auto`: safe type inference; strings always written as text (formula injection guard).
+- `percent`: 0.15 = 15%, format `0.00%`.
+- `money`: currency number formatting `#,##0`.
+- `formula`: calculated formulas starting with `=`.
+- `link`: hyperlinks with safe scheme whitelist (http, https, mailto).
+- `raw`: uncast PhpSpreadsheet value.
+- `formatted`: cell formatted string display (read-only).
+
+For full options schema, see `llms-full.txt` or `README.md`.

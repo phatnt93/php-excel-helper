@@ -1,0 +1,184 @@
+# php-excel-helper — Full LLM Specification & API Reference
+
+Package: phatnt93/php-excel-helper
+Namespace: ExcelHelper\
+Facade: ExcelHelper\Excel
+
+---
+
+## 1. Core Entry Points
+
+### Excel::read(string $path, array $options = []): ReadResult
+Reads an Excel or CSV file according to an array configuration and returns a ReadResult object.
+
+### Excel::reader(string $path): ReaderBuilder
+Starts a fluent builder for configuring and executing spreadsheet reads.
+
+### Excel::write(array $config = []): ExcelOutput
+Builds a spreadsheet export according to an array configuration and returns an ExcelOutput object.
+
+### Excel::writer(): WriterBuilder
+Starts a fluent builder for configuring and executing spreadsheet writes.
+
+### Excel::chunk(string $path, array $options, int $size, callable $callback): ReadSummary
+Streams or reads a spreadsheet file in chunks of $size rows. $callback receives `(array $chunkRows, ChunkContext $ctx)`. Return `false` to stop early.
+
+### Excel::sheetNames(string $path): list<string>
+Lists worksheet tab names without loading cell data.
+
+### Excel::info(string $path): list<SheetInfo>
+Returns metadata (name, totalRows, totalColumns, lastColumnLetter, lastColumnIndex) for all sheets.
+
+### Excel::headers(string $path, int $row = 1, int|string $sheet = 0): array<string, string>
+Extracts header values indexed by column letters (e.g. `['A' => 'Code', 'B' => 'Name']`).
+
+### Excel::registerType(TypeInterface $type, bool $replace = false): void
+Registers a custom column type.
+
+### Excel::setLocale(string $locale): void
+Sets global locale for error translation ('en', 'vi').
+
+---
+
+## 2. Read Configuration Schema
+
+Options passed to `Excel::read($path, $options)` or `Excel::chunk($path, $options, ...)`:
+
+```php
+[
+    'format'             => 'auto', // 'auto'|'xlsx'|'xls'|'ods'|'csv'
+    'allowed_formats'    => ['xlsx', 'xls', 'ods', 'csv'],
+    'sheet'              => 0, // 0-based index or tab name
+    'header_row'         => 1, // 1-based header row number
+    'start_row'          => 2, // 1-based first data row (default: header_row + 1)
+    'end_row'            => null, // 1-based last data row or null
+    'start_column'       => 'A', // Start column for sequential lists
+    'columns'            => [...], // Column definitions
+    'skip_empty_rows'    => true, // Skip completely empty rows
+    'stop_at_empty_row'  => false, // Stop upon hitting empty row
+    'trim'               => true, // Trim string cell values
+    'on_error'           => 'collect', // 'collect'|'skip_row'|'throw'
+    'row_number_key'     => null, // Key to inject Excel row number (e.g. '_row')
+    'calculate_formulas' => false, // Evaluate formulas or use cached value
+    'max_rows'           => null, // Abort if sheet has more rows
+    'max_file_size'      => null, // Maximum file size (e.g. '20M', 20971520)
+    'date_format'        => 'Y-m-d', // Output date format or null for DateTimeImmutable
+    'datetime_format'    => 'Y-m-d H:i:s',
+    'csv'                => [
+        'delimiter'      => 'auto', // ',', ';', "\t", '|' or 'auto'
+        'enclosure'      => '"',
+        'escape'         => '\\',
+        'input_encoding' => 'auto', // 'UTF-8', 'Windows-1252', etc. or 'auto'
+    ],
+    'locale'             => 'en', // 'en'|'vi'
+]
+```
+
+### Column Declaration Forms:
+1. Keyed by column letter/number:
+   `'columns' => ['A' => 'code', 'B' => ['key' => 'name', 'type' => 'string']]`
+2. Sequential list from start_column:
+   `'columns' => ['code', null, ['key' => 'salary', 'type' => 'number']]`
+3. Matched by header text:
+   `'columns' => [['header' => 'Mã NV', 'key' => 'code'], ['header' => ['Email', 'E-mail'], 'key' => 'email', 'optional' => true]]`
+
+### Column Attributes:
+- `key`: (string) Output array key.
+- `header`: (string|list<string>|null) Header text to match.
+- `type`: (string) 'string'|'int'|'float'|'decimal'|'bool'|'date'|'datetime'|'time'|'raw'|'formatted'
+- `format`: (?string) Output date format or decimal places.
+- `input_format`: (string|list<string>|null) Date parsing formats (e.g. `'d/m/Y'`).
+- `default`: (mixed) Default fallback value.
+- `required`: (bool) Trigger 'required' error if cell is empty.
+- `trim`: (?bool) Override global trim.
+- `map`: (?array) Case-insensitive dictionary replacement before type cast.
+- `map_strict`: (bool) Trigger 'not_in_map' error if value is not in dictionary.
+- `transform`: (?callable) Callback after casting: `fn($val, RowContext $ctx) => mixed`.
+- `validate`: (?callable) Validation callback: `fn($val, RowContext $ctx) => true|string`.
+- `optional`: (bool) Header column may be omitted from sheet without error.
+
+---
+
+## 3. Write Configuration Schema
+
+Options passed to `Excel::write($config)`:
+
+```php
+[
+    'format'     => 'xlsx', // 'xlsx'|'xls'|'ods'|'csv'
+    'properties' => [
+        'creator'     => 'Author',
+        'title'       => 'Workbook Title',
+        'subject'     => 'Subject',
+        'description' => 'Description',
+        'company'     => 'Company',
+        'category'    => 'Category',
+        'keywords'    => 'tags',
+    ],
+    'defaults'   => [...], // Inherited by all sheets
+    'sheets'     => [
+        [
+            'name'               => 'Sheet1',
+            'title'              => 'Banner Title',
+            'title_style'        => ['bold' => true, 'size' => 14],
+            'start_cell'         => 'A1',
+            'columns'            => [
+                'code'   => 'Code',
+                'name'   => ['header' => 'Name', 'width' => 25],
+                'salary' => ['header' => 'Salary', 'type' => 'number', 'format' => '#,##0'],
+                'active' => ['header' => 'Active', 'type' => 'bool', 'labels' => [true => 'Yes', false => 'No']],
+            ],
+            'data'               => [...], // array, Generator or Traversable
+            'totals'             => ['salary' => 'sum'],
+            'totals_label'       => 'TOTAL',
+            'header_style'       => ['bold' => true, 'bg' => '#E0E0E0'],
+            'row_style'          => [...],
+            'zebra'              => true, // or ['color' => '#F9F9F9']
+            'borders'            => 'thin', // true, 'thin', 'double', or array
+            'freeze_header'      => true,
+            'auto_filter'        => false,
+            'auto_size'          => true, // null = auto (disabled if > auto_size_max_rows)
+            'auto_size_max_rows' => 5000,
+            'row_height'         => null,
+            'merges'             => ['A1:D1'],
+            'tap'                => function(Worksheet $sheet, SheetLayout $layout) {},
+        ],
+    ],
+]
+```
+
+---
+
+## 4. Return Objects
+
+### ReadResult
+- `rows(): list<array<string, mixed>>`
+- `errors(): list<RowError>`
+- `hasErrors(): bool`
+- `errorsByRow(): array<int, list<RowError>>`
+- `headers(): array<string, string>`
+- `sheetName(): string`
+- `rowCount(): int`
+- `toArray(): array`
+
+### RowError
+- `row: int` (1-based Excel row number)
+- `column: string` (Column letter e.g. 'A')
+- `key: string` (Target field key)
+- `code: string` ('required', 'invalid_int', 'invalid_float', 'invalid_decimal', 'invalid_bool', 'invalid_date', 'invalid_time', 'not_in_map', 'custom')
+- `value: mixed` (Raw cell value)
+- `message: string` (Translated error message)
+
+### ReadSummary
+- `totalRows(): int`
+- `totalChunks(): int`
+- `errorCount(): int`
+- `errors(): list<RowError>`
+- `headers(): array<string, string>`
+- `sheetName(): string`
+
+### ExcelOutput
+- `save(string $path): string`
+- `download(string $filename): void`
+- `toString(): string`
+- `spreadsheet(): \PhpOffice\PhpSpreadsheet\Spreadsheet`
