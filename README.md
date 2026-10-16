@@ -435,14 +435,17 @@ Excel::template('templates/invoice_template.xlsx')
 
 ### 1. Fast Streaming Generator (`Excel::stream`)
 
-Read ultra-large XLSX and CSV spreadsheets row-by-row as a PHP `Generator` with constant O(1) memory:
+Read ultra-large XLSX and CSV spreadsheets row-by-row as a PHP `Generator`:
 
 ```php
 foreach (Excel::stream('huge_file.xlsx', ['start_row' => 2]) as $rowNumber => $row) {
-    // Process single row with negligible memory overhead
+    // Process single row with negligible per-row memory overhead
 }
 ```
 
+> **Memory Characteristics:**
+> - **CSV**: Strictly constant $O(1)$ memory usage line-by-line via `SplFileObject`.
+> - **XLSX**: Rows are pulled node-by-node without loading the spreadsheet DOM tree. The shared-strings table is cached in memory ($O(\text{unique text strings})$); numeric, date, boolean, and inline-string cells stream with $O(1)$ memory.
 ### 2. Image & Logo Insertion
 
 Insert corporate logos and product thumbnails with coordinates and pixel dimensions:

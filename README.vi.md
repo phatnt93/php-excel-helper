@@ -357,15 +357,19 @@ Excel::template('mau_hoa_don.xlsx')
 
 ## Các Tính Năng Nâng Cao v1.1.0
 
-### 1. Đọc Theo Luồng O(1) RAM (`Excel::stream`)
+### 1. Đọc Theo Luồng Generator (`Excel::stream`)
 
-Đọc tệp XLSX và CSV siêu lớn theo từng dòng bằng PHP `Generator` với mức tiêu hao bộ nhớ không đổi:
+Đọc tệp XLSX và CSV siêu lớn theo từng dòng bằng PHP `Generator`:
 
 ```php
 foreach (Excel::stream('file_khong_lo.xlsx', ['start_row' => 2]) as $rowNumber => $row) {
-    // Xử lý từng dòng mượt mà trên server RAM thấp
+    // Xử lý từng dòng mượt mà với lượng RAM tiêu hao theo dòng cực thấp
 }
 ```
+
+> **Đặc tính bộ nhớ:**
+> - **CSV**: Tiêu hao bộ nhớ không đổi tuyệt đối $O(1)$ RAM từng dòng bằng `SplFileObject`.
+> - **XLSX**: Đọc từng nút XML trực tiếp không nạp cây DOM của bảng tính. Bảng chuỗi dùng chung (`sharedStrings`) được cache trong RAM ($O(\text{số lượng chuỗi phân biệt})$); các ô số, ngày tháng, boolean và chuỗi nội dòng (`inlineStr`) được stream với $O(1)$ RAM.
 
 ### 2. Chèn Ảnh & Logo
 

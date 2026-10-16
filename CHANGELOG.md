@@ -21,8 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Conditional Formatting:**
   - Sheet-level (`conditional_formatting => [...]`) and column-level (`conditional => [...]`) rules.
   - Supports operators (`<`, `<=`, `>`, `>=`, `==`, `!=`, `between`), custom font colors, bold/italic, and background fill styling.
-- **Fast Streaming XLSX Reader (`FastXlsxStreamReader`, `Excel::stream()`):**
-  - Pull-based streaming XMLReader over ZipArchive with true O(1) memory footprint for ultra-large XLSX spreadsheets.
+- **Fast Streaming Reader (`FastXlsxStreamReader`, `CsvStreamReader::stream`, `Excel::stream()`):**
+  - Pull-based streaming XMLReader over ZipArchive for low-memory row streaming of large XLSX spreadsheets and lazy O(1) memory CSV streaming.
   - Provides `Excel::stream()` generator for reading XLSX and CSV row-by-row with minimal RAM usage.
 - New standalone demonstration example `examples/07_advanced_v1_1_features.php`.
 - Test suite expanded to 257 tests, 872 assertions, 100% passing, line coverage >= 90%.

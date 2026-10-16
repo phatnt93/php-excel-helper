@@ -338,7 +338,7 @@ final class FastXlsxStreamReader
                 $colLetter = $rMatch[1] ?? 'A';
                 $cIdx = Coordinate::columnIndex($colLetter);
 
-                preg_match('/t="([a-z]+)"/', $attrs, $tMatch);
+                preg_match('/t="([^"]+)"/', $attrs, $tMatch);
                 $type = $tMatch[1] ?? '';
 
                 $cellVal = null;

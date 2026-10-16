@@ -174,4 +174,116 @@ final class FastXlsxStreamReaderTest extends TestCase
         $this->assertSame(1, $res->rowCount());
         $this->assertSame(10, $res->rows()[0]['A']);
     }
+    public function testFastXlsxInlineStrings(): void
+    {
+        $savePath = $this->tempPath('xlsx');
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $ss->getActiveSheet();
+        $sheet->setCellValue('A1', 'Placeholder');
+        $sheet->setCellValue('B1', 'Normal String');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $writer->save($savePath);
+        $ss->disconnectWorksheets();
+
+        $zip = new \ZipArchive();
+        $zip->open($savePath);
+        $xml = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+        $xml = preg_replace(
+            '/<c r="A1"[^>]*>.*?<\/c>/s',
+            '<c r="A1" t="inlineStr"><is><t>Inline Text Value</t></is></c>',
+            $xml,
+        );
+        $zip->addFromString('xl/worksheets/sheet1.xml', (string) $xml);
+        $zip->close();
+
+        $result = FastXlsxStreamReader::read($savePath, ReadConfigParser::parse([
+            'columns' => [
+                'A' => 'inline',
+                'B' => 'shared',
+            ],
+            'start_row' => 1,
+        ]));
+
+        $this->assertSame(1, $result->rowCount());
+        $this->assertSame('Inline Text Value', $result->rows()[0]['inline']);
+        $this->assertSame('Normal String', $result->rows()[0]['shared']);
+    }
+
+    public function testCsvStreamLazinessAndBoundedMemory(): void
+    {
+        $csvPath = $this->tempPath('csv');
+        $fp = fopen($csvPath, 'w');
+        if ($fp !== false) {
+            fputcsv($fp, ['id', 'name', 'value']);
+            for ($i = 1; $i <= 5000; $i++) {
+                fputcsv($fp, [$i, 'User ' . $i, 'Val ' . $i]);
+            }
+            fclose($fp);
+        }
+        // Test 1: Laziness - verify only 3 rows are evaluated using a transform counter
+        $transformCount = 0;
+        $generator = Excel::stream($csvPath, [
+            'columns' => [
+                'A' => 'id',
+                'B' => [
+                    'key' => 'name',
+                    'transform' => function ($val) use (&$transformCount) {
+                        $transformCount++;
+                        return $val;
+                    },
+                ],
+                'C' => 'value',
+            ],
+            'start_row' => 2,
+        ]);
+
+        $this->assertInstanceOf(\Generator::class, $generator);
+        $this->assertTrue($generator->valid());
+
+        // Sample memory while generator is suspended at the first yield
+        $suspendedMem = memory_get_usage();
+
+        $readRows = [];
+        foreach ($generator as $lineNum => $row) {
+            $readRows[] = $row;
+            if (count($readRows) === 3) {
+                break;
+            }
+        }
+
+        // True laziness: transform was invoked EXACTLY 3 times, NOT 5000 times!
+        $this->assertSame(3, $transformCount);
+        $this->assertCount(3, $readRows);
+        $this->assertSame('User 1', $readRows[0]['name']);
+        $this->assertSame('User 3', $readRows[2]['name']);
+
+        // Test 2: Bounded memory while suspended and over streaming
+        $initialMem = memory_get_usage();
+        $memDiffSuspended = $suspendedMem - $initialMem;
+        $this->assertLessThan(200 * 1024, abs($memDiffSuspended));
+
+        $totalIterated = 0;
+        foreach (Excel::stream($csvPath, ['start_row' => 2]) as $row) {
+            $totalIterated++;
+        }
+        $this->assertSame(5000, $totalIterated);
+        // Test 3: Streaming with header_row, end_row, and skip_row
+        $csvErrorPath = $this->tempPath('csv');
+        file_put_contents($csvErrorPath, "ID,Age\n1,invalid_int\n2,30\n\n3,40\n");
+        $streamed = iterator_to_array(Excel::stream($csvErrorPath, [
+            'header_row' => 1,
+            'start_row' => 2,
+            'end_row' => 4,
+            'columns' => [
+                ['header' => 'ID', 'key' => 'id'],
+                ['header' => 'Age', 'key' => 'age', 'type' => 'int'],
+            ],
+            'skip_empty_rows' => true,
+            'on_error' => 'skip_row',
+        ]));
+        $this->assertCount(2, $streamed);
+        $this->assertSame(30, array_values($streamed)[0]['age']);
+        $this->assertSame(40, array_values($streamed)[1]['age']);
+    }
 }

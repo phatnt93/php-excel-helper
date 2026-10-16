@@ -18,16 +18,117 @@ final class CsvStreamReader
 
     /**
      * @return \Generator<int, array<string, mixed>>
+     *
+     * @throws ReaderException
+     * @throws RowValidationException
      */
     public static function stream(string $path, ReadOptions $options): \Generator
     {
-        $buffer = [];
-        self::chunk($path, $options, 1000, static function (array $chunk) use (&$buffer): void {
-            $buffer = array_merge($buffer, $chunk);
-        });
+        $delimiter = self::resolveDelimiter($path, $options->csv['delimiter'] ?? 'auto');
+        $enclosure = (string) ($options->csv['enclosure'] ?? '"');
+        $escape = (string) ($options->csv['escape'] ?? '\\');
+        $encoding = self::resolveEncoding($path, $options->csv['input_encoding'] ?? 'auto');
 
-        foreach ($buffer as $idx => $row) {
-            yield $idx => $row;
+        if ($encoding !== 'UTF-8') {
+            $rawContent = file_get_contents($path);
+            if ($rawContent !== false) {
+                $utf8Content = mb_convert_encoding($rawContent, 'UTF-8', $encoding);
+                $file = new SplFileObject('php://temp', 'r+');
+                if (is_string($utf8Content)) {
+                    $file->fwrite($utf8Content);
+                }
+                $file->rewind();
+            } else {
+                $file = new SplFileObject($path, 'r');
+            }
+        } else {
+            $file = new SplFileObject($path, 'r');
+        }
+
+        $file->setFlags(SplFileObject::READ_CSV | SplFileObject::DROP_NEW_LINE | SplFileObject::SKIP_EMPTY);
+        $file->setCsvControl($delimiter, $enclosure, $escape);
+
+        $lineNum = 0;
+        $headers = [];
+        $headerLookup = null;
+        $resolvedColumns = [];
+        $columnsInitialized = false;
+
+        $globalOptions = [
+            'date_format' => $options->dateFormat,
+            'datetime_format' => $options->datetimeFormat,
+            'locale' => $options->locale,
+            'trim' => $options->trim,
+        ];
+
+        while (!$file->eof()) {
+            /** @var list<mixed>|false|null $rawRow */
+            $rawRow = $file->fgetcsv($delimiter, $enclosure, $escape);
+
+            if ($rawRow === false || $rawRow === null || $rawRow === [null]) {
+                continue;
+            }
+
+            $lineNum++;
+
+            // Convert encoding and strip BOM on line 1
+            if ($lineNum === 1) {
+                $rawRow = self::stripBomFromRow($rawRow);
+            }
+
+            // Convert to 1-based indexed raw row
+            $indexedRow = [];
+            foreach ($rawRow as $colIdx => $colVal) {
+                $indexedRow[$colIdx + 1] = $colVal;
+            }
+
+            // Handle header row
+            if ($options->headerRow !== null && $lineNum === $options->headerRow) {
+                foreach ($indexedRow as $cIdx => $cVal) {
+                    $letter = Coordinate::columnLetter($cIdx);
+                    $headers[$letter] = trim((string) $cVal);
+                }
+                $headerLookup = self::buildHeaderLookup($headers);
+                continue;
+            }
+
+            if ($lineNum < $options->startRow) {
+                continue;
+            }
+
+            if ($options->endRow !== null && $lineNum > $options->endRow) {
+                break;
+            }
+
+            // Initialize columns on first data row
+            if (!$columnsInitialized) {
+                $resolvedColumns = self::resolveColumns($indexedRow, $options, $headerLookup);
+                $columnsInitialized = true;
+            }
+
+            // Check empty row
+            if (RowMapper::isRowEmpty($indexedRow, $resolvedColumns)) {
+                if ($options->stopAtEmptyRow) {
+                    break;
+                }
+                if ($options->skipEmptyRows) {
+                    continue;
+                }
+            }
+
+            $mapped = RowMapper::map($lineNum, $indexedRow, $resolvedColumns, $options, $globalOptions);
+
+            if ($mapped['errors'] !== []) {
+                if ($options->onError === 'throw') {
+                    throw RowValidationException::fromRowError($mapped['errors'][0]);
+                }
+
+                if ($options->onError === 'skip_row') {
+                    continue;
+                }
+            }
+
+            yield $lineNum => $mapped['row'];
         }
     }
     public static function chunk(
