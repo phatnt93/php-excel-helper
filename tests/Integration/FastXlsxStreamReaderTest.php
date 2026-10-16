@@ -221,6 +221,17 @@ final class FastXlsxStreamReaderTest extends TestCase
             }
             fclose($fp);
         }
+
+        $csvSmallPath = $this->tempPath('csv');
+        $fpSmall = fopen($csvSmallPath, 'w');
+        if ($fpSmall !== false) {
+            fputcsv($fpSmall, ['id', 'name', 'value']);
+            for ($i = 1; $i <= 10; $i++) {
+                fputcsv($fpSmall, [$i, 'User ' . $i, 'Val ' . $i]);
+            }
+            fclose($fpSmall);
+        }
+
         // Test 1: Laziness - verify only 3 rows are evaluated using a transform counter
         $transformCount = 0;
         $generator = Excel::stream($csvPath, [
@@ -241,9 +252,6 @@ final class FastXlsxStreamReaderTest extends TestCase
         $this->assertInstanceOf(\Generator::class, $generator);
         $this->assertTrue($generator->valid());
 
-        // Sample memory while generator is suspended at the first yield
-        $suspendedMem = memory_get_usage();
-
         $readRows = [];
         foreach ($generator as $lineNum => $row) {
             $readRows[] = $row;
@@ -258,13 +266,34 @@ final class FastXlsxStreamReaderTest extends TestCase
         $this->assertSame('User 1', $readRows[0]['name']);
         $this->assertSame('User 3', $readRows[2]['name']);
 
-        // Test 2: Bounded memory while suspended and over streaming
-        $initialMem = memory_get_usage();
-        $memDiffSuspended = $suspendedMem - $initialMem;
-        $this->assertLessThan(200 * 1024, abs($memDiffSuspended));
+        // Test 2: Bounded memory: baseline captured BEFORE generator creation
+        // Warmup call to load class definitions and avoid autoloader skew
+        $warmup = Excel::stream($csvSmallPath, ['start_row' => 2]);
+        $warmup->rewind();
+        unset($warmup);
+        gc_collect_cycles();
+
+        // Measure small CSV (10 rows) at first yield
+        $baseSmall = memory_get_usage();
+        $genSmall = Excel::stream($csvSmallPath, ['start_row' => 2]);
+        $genSmall->rewind();
+        $memSmall = memory_get_usage() - $baseSmall;
+        unset($genSmall);
+        gc_collect_cycles();
+
+        // Measure large CSV (5000 rows) at first yield
+        $baseLarge = memory_get_usage();
+        $genLarge = Excel::stream($csvPath, ['start_row' => 2]);
+        $genLarge->rewind();
+        $memLarge = memory_get_usage() - $baseLarge;
+
+        // Allocation at first yield is strictly bounded (< 100 KB, actual ~18 KB)
+        $this->assertLessThan(100 * 1024, $memLarge);
+        // Allocation difference between 10 rows and 5000 rows is negligible (< 20 KB, actual 0 bytes)
+        $this->assertLessThan(20 * 1024, abs($memLarge - $memSmall));
 
         $totalIterated = 0;
-        foreach (Excel::stream($csvPath, ['start_row' => 2]) as $row) {
+        foreach ($genLarge as $row) {
             $totalIterated++;
         }
         $this->assertSame(5000, $totalIterated);
