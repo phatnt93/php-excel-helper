@@ -34,13 +34,19 @@ Read and write Excel and CSV spreadsheets (`.xlsx`, `.xls`, `.ods`, `.csv`) in P
   - [Output Targets (Save, Download, String)](#output-targets)
 - [Large Files & Memory Management](#large-files--memory-management)
   - [Chunk Reading](#chunk-reading)
+  - [Fast Streaming Generator (`Excel::stream`)](#fast-streaming-generator-excelstream)
   - [Zero-Memory CSV Streaming](#zero-memory-csv-streaming)
+- [Template Engine (`Excel::template`)](#template-engine-exceltemplate)
+- [Advanced Features](#advanced-features)
+  - [Image & Logo Insertion](#1-image--logo-insertion)
+  - [Data Validation & Dropdowns](#2-data-validation--dropdowns)
+  - [Conditional Formatting](#3-conditional-formatting)
 - [Utilities](#utilities)
+- [Localization & Translation](#localization--translation)
 - [Security First](#security-first)
 - [Custom Data Types](#custom-data-types)
 - [How-To Recipes (FAQ)](#how-to-recipes-faq)
 - [License](#license)
-
 ---
 
 ## Why php-excel-helper?
@@ -239,14 +245,18 @@ Excel::writer()
 - **`string`**: Preserves leading zeros (`'0901234567'`). Converts scientific notation floats (`1.0E+15`) to exact integers.
 - **`int`**: Numeric string or float without fractional part (`42.0` -> `42`). Supports `thousands_separator`.
 - **`float`** (alias **`number`**): Standard float. Configurable `thousands_separator` and `decimal_separator`.
-- **`decimal`**: Returns a string representation preserving exact decimal precision (for currency/finance).
-- **`bool`**: `true/false`, `1/0`, and case-insensitive strings (`'yes'/'no'`, `'true'/'false'`, `'đúng'/'sai'`).
-- **`date`**: Parses Excel serial numbers (1900 and 1904 calendars) or date strings. Returns formatted string or `DateTimeImmutable`. Rejects overflow dates like `31/02/2026`.
-- **`datetime`**: Full date and time.
+- **`decimal`**: Returns a string representation preserving exact decimal precision without floating-point artifacts. Supports `decimals` option (e.g. `'decimals' => 0`).
+- **`bool`**: `true/false`, `1/0`, and case-insensitive strings (`'yes'/'no'`, `'true'/'false'`, `'đúng'/'sai'`). Supports `labels` array when writing (e.g. `['true' => 'Active', 'false' => 'Inactive']`).
+- **`date`**: Parses Excel serial numbers (both 1900 and 1904 calendars) or date strings. Returns formatted string (`date_format` option) or `DateTimeImmutable`. Rejects overflow dates like `31/02/2026`.
+- **`datetime`**: Full date and time. Configurable `datetime_format`.
 - **`time`**: Time fraction or time string (e.g. `'14:30:00'`).
+- **`money`**: Cleans currency symbols (`$`, `₫`, `€`, `¥`) and separators. Configurable `thousands_separator` and `decimal_separator`. Writes formatted currency numbers (`#,##0`).
+- **`percent`**: Automatically parses percentage strings (`'15%'` -> `0.15`) or raw floats. Writes as Excel percent numbers (`0.00%`).
+- **`formula`**: Evaluates or writes Excel formulas (e.g. `'=SUM(A1:A10)'`). Formula injection safe.
+- **`link`**: Hyperlink column. Accepts a URL string or array `['url' => 'https://...', 'label' => 'Homepage']`. Rejects unsafe URI schemes like `javascript:`.
+- **`auto`**: Auto-detects cell value type based on content (number, date, boolean, or string).
 - **`raw`**: Value as returned by PhpSpreadsheet without casting.
 - **`formatted`**: Cell display string formatted exactly as visible in Excel.
-
 ---
 
 ### Error Handling (`on_error`)
@@ -486,6 +496,23 @@ Highlight values automatically with Excel conditional styles:
     ],
 ],
 ```
+## Localization & Translation
+
+`php-excel-helper` provides built-in internationalization for row validation error messages and totals labels (`en` and `vi`):
+
+```php
+use ExcelHelper\Excel;
+
+// Set global locale for row error messages and default totals labels
+Excel::setLocale('vi');
+
+// Check current active locale ('en' or 'vi')
+$locale = Excel::getLocale();
+
+// Reset to default settings
+Excel::resetDefaults();
+```
+
 ---
 
 ## Security First

@@ -34,13 +34,19 @@ Thư viện PHP hiện đại, an toàn và tinh gọn giúp đọc và ghi các
   - [Các đầu ra (Lưu, Tải về, Chuỗi nhị phân)](#các-đầu-ra)
 - [Xử Lý File Lớn & Tiết Kiệm Bộ Nhớ](#xử-lý-file-lớn--tiết-kiệm-bộ-nhớ)
   - [Đọc theo khối (Chunk)](#đọc-theo-khối-chunk)
+  - [Đọc theo luồng Generator (`Excel::stream`)](#1-đọc-theo-luồng-generator-excelstream)
   - [Đọc CSV theo luồng O(1) RAM](#đọc-csv-theo-luồng-o1-ram)
+- [Điền Dữ Liệu Vào File Mẫu (`Excel::template`)](#điền-dữ-liệu-vào-file-mẫu-exceltemplate)
+- [Các Tính Năng Nâng Cao](#các-tính-năng-nâng-cao-v110)
+  - [Chèn ảnh & Logo](#2-chèn-ảnh--logo)
+  - [Ràng buộc dữ liệu & Dropdown List](#3-ràng-buộc-dữ-liệu--dropdown-list-data-validation)
+  - [Định dạng có điều kiện](#4-định-dạng-có-điều-kiện-conditional-formatting)
 - [Tiện ích](#tiện-ích)
+- [Đa ngôn ngữ & Bản địa hóa](#đa-ngôn-ngữ--bản-địa-hóa)
 - [Bảo mật hàng đầu](#bảo-mật-hàng-đầu)
 - [Kiểu dữ liệu tùy biến (Custom Types)](#kiểu-dữ-liệu-tùy-biến-custom-types)
 - [Câu hỏi thường gặp (FAQ)](#câu-hỏi-thường-gặp-faq)
 - [Giấy phép](#giấy-phép)
-
 ---
 
 ## Tại sao nên dùng php-excel-helper?
@@ -229,6 +235,23 @@ Excel::writer()
 | `transform` | `?callable` | `null` | Hàm biến đổi sau khi ép kiểu: `fn($val, RowContext $ctx): mixed`. |
 | `validate` | `?callable` | `null` | Hàm kiểm tra hợp lệ: `fn($val, RowContext $ctx): true|string`. |
 | `optional` | `bool` | `false` | Cho phép cột tiêu đề vắng mặt mà không báo lỗi. |
+### Các kiểu dữ liệu hỗ trợ
+
+- **`string`**: Giữ nguyên số 0 đầu (vd: số điện thoại `'0901234567'`). Chuyển số thực dạng khoa học (`1.0E+15`) thành số nguyên chính xác.
+- **`int`**: Chuỗi số hoặc số thực không có phần thập phân (`42.0` -> `42`). Hỗ trợ cấu hình `thousands_separator`.
+- **`float`** (alias **`number`**): Số thực tiêu chuẩn. Hỗ trợ `thousands_separator` và `decimal_separator`.
+- **`decimal`**: Trả về chuỗi biểu diễn số thập phân bảo toàn độ chính xác tuyệt đối (dành cho kế toán, tài chính). Hỗ trợ tùy chọn `'decimals' => 0`.
+- **`bool`**: `true/false`, `1/0`, và chuỗi không phân biệt hoa thường (`'yes'/'no'`, `'true'/'false'`, `'đúng'/'sai'`, `'có'/'không'`). Hỗ trợ xuất nhãn qua `'labels' => ['true' => 'Hoạt động', 'false' => 'Khóa']`.
+- **`date`**: Tự động nhận diện số serial Excel (cả hệ lịch 1900 và 1904) hoặc chuỗi ngày tháng. Trả về chuỗi ngày theo định dạng hoặc `DateTimeImmutable`. Từ chối ngày tràn (như `31/02/2026`).
+- **`datetime`**: Đầy đủ ngày và giờ. Có thể cấu hình `datetime_format`.
+- **`time`**: Phân số thời gian hoặc chuỗi giờ phút (vd: `'14:30:00'`).
+- **`money`**: Tự động làm sạch ký hiệu tiền tệ (`$`, `₫`, `€`, `¥`) và dấu phân cách. Có thể cấu hình `thousands_separator`, `decimal_separator`. Ghi định dạng tiền tệ (`#,##0`).
+- **`percent`**: Tự động phân tích chuỗi phần trăm (`'15%'` -> `0.15`) hoặc số thực. Ghi định dạng phần trăm Excel (`0.00%`).
+- **`formula`**: Đọc hoặc ghi công thức tính Excel (vd: `'=SUM(A1:A10)'`). Phòng chống độc hại Formula Injection.
+- **`link`**: Cột siêu liên kết (hyperlink). Nhận chuỗi URL hoặc mảng `['url' => 'https://...', 'label' => 'Trang chủ']`. Chặn các scheme độc hại như `javascript:`.
+- **`auto`**: Tự động nhận diện kiểu dữ liệu của ô (số, ngày tháng, boolean hoặc chuỗi).
+- **`raw`**: Giá trị nguyên bản từ PhpSpreadsheet không qua ép kiểu.
+- **`formatted`**: Chuỗi hiển thị của ô đúng như nhìn thấy trên Excel.
 
 ---
 
@@ -410,6 +433,108 @@ Tự động đổi màu ô dựa trên giá trị:
     ],
 ],
 ```
+## Đa Ngôn Ngữ & Bản Địa Hóa
+
+`php-excel-helper` tích hợp sẵn bộ dịch thông báo lỗi dữ liệu và nhãn dòng tổng bằng tiếng Anh (`en`) và tiếng Việt (`vi`):
+
+```php
+use ExcelHelper\Excel;
+
+// Thiết lập ngôn ngữ toàn cục ('vi' hoặc 'en')
+Excel::setLocale('vi');
+
+// Kiểm tra ngôn ngữ hiện tại
+$locale = Excel::getLocale(); // 'vi'
+
+// Khôi phục cấu hình mặc định
+Excel::resetDefaults();
+```
+
+---
+
+## Bảo Mật Hàng Đầu (Security First)
+
+1. **Phòng chống Formula Injection (CSV & Excel)**: Các chuỗi văn bản không tin cậy bắt đầu bằng các ký tự nguy hiểm `=`, `+`, `-`, `@`, `\t`, `\r` được lưu trữ tường minh dưới dạng chuỗi (`TYPE_STRING`) khi xuất Excel, và tự động thêm dấu `'` thoát hiểm khi xuất CSV.
+2. **Chống giả mạo định dạng (Format Spoofing)**: Nhận diện định dạng tệp qua magic bytes và chữ ký nhị phân thực tế, đối chiếu nghiêm ngặt với danh sách trắng cho phép (`allowed_formats`). Từ chối các tệp HTML, PHP hoặc mã độc đổi tên thành `.xlsx`.
+3. **Chống tấn công XXE (XML External Entity)**: Sử dụng trình quét XML của PhpSpreadsheet và `XMLReader` an toàn để vô hiệu hóa hoàn toàn các thực thể XML độc hại bên ngoài.
+4. **Lọc sạch siêu liên kết (Link Sanitization)**: Cột kiểu `link` chỉ chấp nhận các giao thức an toàn (`http`, `https`, `mailto`); chặn đứng các liên kết chứa mã thực thi `javascript:`.
+5. **Khống chế tài nguyên**: `max_file_size` và `max_rows` giúp kiểm soát dung lượng và số lượng dòng ngay trước khi mở tệp, ngăn ngừa tình trạng tràn RAM (OOM) hoặc DoS.
+
+---
+
+## Kiểu Dữ Liệu Tùy Biến (Custom Data Types)
+
+Đăng ký kiểu dữ liệu hai chiều (đọc & ghi) tùy biến một cách dễ dàng:
+
+```php
+use ExcelHelper\Contracts\TypeInterface;
+use ExcelHelper\Types\CellValue;
+use ExcelHelper\Types\ColumnContext;
+
+class TienVndType implements TypeInterface
+{
+    public function name(): string
+    {
+        return 'tien_vnd';
+    }
+
+    public function read(mixed $value, ColumnContext $context): float
+    {
+        return (float) preg_replace('/[^\d]/u', '', (string) $value);
+    }
+
+    public function write(mixed $value, ColumnContext $context): CellValue
+    {
+        return CellValue::numeric((float) $value, '#,##0 "đ"');
+    }
+}
+
+Excel::registerType(new TienVndType());
+
+// Sử dụng ngay trong mọi định nghĩa đọc/ghi:
+Excel::write([
+    'columns' => ['hoc_phi' => ['header' => 'Học phí', 'type' => 'tien_vnd']],
+    'data' => [['hoc_phi' => 1500000]],
+]);
+```
+
+---
+
+## Câu Hỏi Thường Gặp (FAQ)
+
+<details>
+<summary><strong>Làm thế nào để đọc file Excel thành mảng trong PHP?</strong></summary>
+
+```php
+$rows = Excel::read('nhan-vien.xlsx')->rows();
+```
+</details>
+
+<details>
+<summary><strong>Làm thế nào để xuất mảng dữ liệu tải về trình duyệt trực tiếp?</strong></summary>
+
+```php
+Excel::write([
+    'columns' => ['name' => 'Tên', 'email' => 'Email'],
+    'data'    => $users,
+])->download('danh-sach.xlsx');
+```
+</details>
+
+<details>
+<summary><strong>Làm thế nào để xuất workbook có nhiều sheet?</strong></summary>
+
+```php
+Excel::write([
+    'sheets' => [
+        ['name' => 'Khách hàng', 'columns' => [...], 'data' => $customers],
+        ['name' => 'Đơn hàng',   'columns' => [...], 'data' => $orders],
+    ],
+])->save('bao-cao.xlsx');
+```
+</details>
+
+---
 
 ---
 
