@@ -31,16 +31,16 @@ Read and write Excel and CSV spreadsheets (`.xlsx`, `.xls`, `.ods`, `.csv`) in P
   - [Workbook Options](#workbook-options)
   - [Sheet Options](#sheet-options)
   - [Friendly Style System](#friendly-style-system)
-  - [Output Targets (Save, Download, String)](#output-targets)
+  - [Output Targets](#output-targets)
 - [Large Files & Memory Management](#large-files--memory-management)
   - [Chunk Reading](#chunk-reading)
   - [Fast Streaming Generator (`Excel::stream`)](#fast-streaming-generator-excelstream)
   - [Zero-Memory CSV Streaming](#zero-memory-csv-streaming)
 - [Template Engine (`Excel::template`)](#template-engine-exceltemplate)
 - [Advanced Features](#advanced-features)
-  - [Image & Logo Insertion](#1-image--logo-insertion)
-  - [Data Validation & Dropdowns](#2-data-validation--dropdowns)
-  - [Conditional Formatting](#3-conditional-formatting)
+  - [Image & Logo Insertion](#image--logo-insertion)
+  - [Data Validation & Dropdowns](#data-validation--dropdowns)
+  - [Conditional Formatting](#conditional-formatting)
 - [Utilities](#utilities)
 - [Localization & Translation](#localization--translation)
 - [Security First](#security-first)
@@ -392,27 +392,23 @@ $summary = Excel::chunk('huge.xlsx', ['columns' => [...]], 1000,
 echo "Total rows processed: {$summary->totalRows()}\n";
 ```
 
+### Fast Streaming Generator (`Excel::stream`)
+
+Read ultra-large XLSX and CSV spreadsheets row-by-row as a PHP `Generator`:
+
+```php
+foreach (Excel::stream('huge_file.xlsx', ['start_row' => 2]) as $rowNumber => $row) {
+    // Process single row with negligible per-row memory overhead
+}
+```
+
+> **Memory Characteristics:**
+> - **CSV**: Strictly constant $O(1)$ memory usage line-by-line via `SplFileObject` for UTF-8 files (non-UTF-8 encodings like UTF-16/Windows-1258 are transcoded in a buffer before streaming).
+> - **XLSX**: Rows are pulled node-by-node without loading the spreadsheet DOM tree. The shared-strings table is cached in memory ($O(\text{unique text strings})$); numeric, date, boolean, and inline-string cells stream with $O(1)$ memory.
+
 ### Zero-Memory CSV Streaming
 
 When reading UTF-8 CSV files in chunk mode, `php-excel-helper` bypasses PhpSpreadsheet entirely and streams lines via `SplFileObject`. This guarantees **constant O(1) memory usage** for UTF-8 files. (Non-UTF-8 encodings such as UTF-16 or Windows-1258 are transcoded in a memory buffer first).
----
-
-## Utilities
-
-```php
-// List sheet names without loading cell data
-$sheets = Excel::sheetNames('workbook.xlsx');
-
-// Inspect sheet dimensions
-$info = Excel::info('workbook.xlsx');
-foreach ($info as $sheetInfo) {
-    echo "{$sheetInfo->name}: {$sheetInfo->totalRows} rows, {$sheetInfo->totalColumns} columns\n";
-}
-
-// Read header row directly
-$headers = Excel::headers('workbook.xlsx', row: 1);
-```
-
 
 ---
 
@@ -440,22 +436,9 @@ Excel::template('templates/invoice_template.xlsx')
 
 ---
 
-## Advanced v1.1.0 Features
+## Advanced Features
 
-### 1. Fast Streaming Generator (`Excel::stream`)
-
-Read ultra-large XLSX and CSV spreadsheets row-by-row as a PHP `Generator`:
-
-```php
-foreach (Excel::stream('huge_file.xlsx', ['start_row' => 2]) as $rowNumber => $row) {
-    // Process single row with negligible per-row memory overhead
-}
-```
-
-> **Memory Characteristics:**
-> - **CSV**: Strictly constant $O(1)$ memory usage line-by-line via `SplFileObject` for UTF-8 files (non-UTF-8 encodings like UTF-16/Windows-1258 are transcoded in a buffer before streaming).
-> - **XLSX**: Rows are pulled node-by-node without loading the spreadsheet DOM tree. The shared-strings table is cached in memory ($O(\text{unique text strings})$); numeric, date, boolean, and inline-string cells stream with $O(1)$ memory.
-### 2. Image & Logo Insertion
+### Image & Logo Insertion
 
 Insert corporate logos and product thumbnails with coordinates and pixel dimensions:
 
@@ -469,7 +452,7 @@ Excel::write([
 ])->save('report.xlsx');
 ```
 
-### 3. Data Validation & Dropdowns
+### Data Validation & Dropdowns
 
 Add Excel dropdown selection lists and validation rules directly to columns:
 
@@ -484,7 +467,7 @@ Add Excel dropdown selection lists and validation rules directly to columns:
 ],
 ```
 
-### 4. Conditional Formatting
+### Conditional Formatting
 
 Highlight values automatically with Excel conditional styles:
 
@@ -496,6 +479,27 @@ Highlight values automatically with Excel conditional styles:
     ],
 ],
 ```
+
+---
+
+## Utilities
+
+```php
+// List sheet names without loading cell data
+$sheets = Excel::sheetNames('workbook.xlsx');
+
+// Inspect sheet dimensions
+$info = Excel::info('workbook.xlsx');
+foreach ($info as $sheetInfo) {
+    echo "{$sheetInfo->name}: {$sheetInfo->totalRows} rows, {$sheetInfo->totalColumns} columns\n";
+}
+
+// Read header row directly
+$headers = Excel::headers('workbook.xlsx', row: 1);
+```
+
+---
+
 ## Localization & Translation
 
 `php-excel-helper` provides built-in internationalization for row validation error messages and totals labels (`en` and `vi`):

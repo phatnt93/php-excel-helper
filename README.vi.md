@@ -31,16 +31,16 @@ Thư viện PHP hiện đại, an toàn và tinh gọn giúp đọc và ghi các
   - [Tùy chọn cấp Workbook](#tùy-chọn-cấp-workbook)
   - [Tùy chọn cấp Sheet](#tùy-chọn-cấp-sheet)
   - [Hệ thống Style thân thiện](#hệ-thống-style-thân-thiện)
-  - [Các đầu ra (Lưu, Tải về, Chuỗi nhị phân)](#các-đầu-ra)
+  - [Các đầu ra](#các-đầu-ra)
 - [Xử Lý File Lớn & Tiết Kiệm Bộ Nhớ](#xử-lý-file-lớn--tiết-kiệm-bộ-nhớ)
   - [Đọc theo khối (Chunk)](#đọc-theo-khối-chunk)
-  - [Đọc theo luồng Generator (`Excel::stream`)](#1-đọc-theo-luồng-generator-excelstream)
+  - [Đọc theo luồng Generator (`Excel::stream`)](#đọc-theo-luồng-generator-excelstream)
   - [Đọc CSV theo luồng O(1) RAM](#đọc-csv-theo-luồng-o1-ram)
 - [Điền Dữ Liệu Vào File Mẫu (`Excel::template`)](#điền-dữ-liệu-vào-file-mẫu-exceltemplate)
-- [Các Tính Năng Nâng Cao](#các-tính-năng-nâng-cao-v110)
-  - [Chèn ảnh & Logo](#2-chèn-ảnh--logo)
-  - [Ràng buộc dữ liệu & Dropdown List](#3-ràng-buộc-dữ-liệu--dropdown-list-data-validation)
-  - [Định dạng có điều kiện](#4-định-dạng-có-điều-kiện-conditional-formatting)
+- [Các Tính Năng Nâng Cao](#các-tính-năng-nâng-cao)
+  - [Chèn ảnh & Logo](#chèn-ảnh--logo)
+  - [Ràng buộc dữ liệu & Dropdown List](#ràng-buộc-dữ-liệu--dropdown-list-data-validation)
+  - [Định dạng có điều kiện](#định-dạng-có-điều-kiện-conditional-formatting)
 - [Tiện ích](#tiện-ích)
 - [Đa ngôn ngữ & Bản địa hóa](#đa-ngôn-ngữ--bản-địa-hóa)
 - [Bảo mật hàng đầu](#bảo-mật-hàng-đầu)
@@ -264,6 +264,47 @@ Excel::writer()
 ---
 
 ## Ghi File Chi Tiết
+### Tùy chọn cấp Workbook
+
+```php
+Excel::write([
+    'format'     => 'xlsx', // 'xlsx', 'xls', 'ods', 'csv'
+    'properties' => [
+        'creator'     => 'Công ty ABC',
+        'title'       => 'Báo Cáo Năm',
+        'description' => 'Tổng hợp các chỉ số theo quý',
+    ],
+    'defaults'   => [
+        'zebra'         => true,
+        'freeze_header' => true,
+    ],
+    'sheets'     => [
+        ['name' => 'Q1', 'columns' => [...], 'data' => [...]],
+        ['name' => 'Q2', 'columns' => [...], 'data' => [...]],
+    ],
+])->save('bao-cao.xlsx');
+```
+
+---
+
+### Tùy chọn cấp Sheet
+
+- `name`: Tên sheet / thẻ tab (tự động làm sạch chống ký tự cấm và giới hạn tối đa 31 ký tự của Excel).
+- `title`: Tiêu đề banner lớn nằm trên đầu bảng, tự động gộp ô (merge) ngang qua các cột.
+- `start_cell`: Tọa độ ô bắt đầu của bảng (mặc định `'A1'`).
+- `columns`: Khai báo các cột dữ liệu (key, header, kiểu, độ rộng, style...).
+- `data`: Dữ liệu các dòng (`array`, `Traversable`, hoặc `Generator`).
+- `totals`: Công thức tính dòng tổng cuối bảng (`['doanh_thu' => 'sum', 'danh_gia' => 'average']`).
+- `totals_label`: Nhãn ở cột đầu tiên của dòng tổng (mặc định `'Tổng cộng'`).
+- `zebra`: Tô màu xen kẽ các dòng chẵn/lẻ (`true` hoặc `['color' => '#F2F2F2']`).
+- `borders`: Viền bảng (`true`, `'thin'`, `'double'`, hoặc mảng cấu hình tùy biến).
+- `freeze_header`: Cố định dòng tiêu đề khi cuộn trang.
+- `auto_filter`: Bật bộ lọc dropdown của Excel trên dòng tiêu đề.
+- `auto_size`: Tự động tính độ rộng cột (tự động tắt an toàn nếu bảng tính vượt quá `5000` dòng).
+- `merges`: Gộp ô thủ công (vd: `['A10:C10']`).
+- `tap`: Hàm callback trực tiếp với đối tượng `Worksheet` và `SheetLayout` của PhpSpreadsheet.
+
+---
 
 ### Hệ thống Style thân thiện
 
@@ -330,26 +371,23 @@ $summary = Excel::chunk('big-data.xlsx', ['columns' => [...]], 1000,
 echo "Tổng số dòng đã xử lý: {$summary->totalRows()}\n";
 ```
 
+### Đọc theo luồng Generator (`Excel::stream`)
+
+Đọc tệp XLSX và CSV siêu lớn theo từng dòng bằng PHP `Generator`:
+
+```php
+foreach (Excel::stream('file_khong_lo.xlsx', ['start_row' => 2]) as $rowNumber => $row) {
+    // Xử lý từng dòng mượt mà với lượng RAM tiêu hao theo dòng cực thấp
+}
+```
+
+> **Đặc tính bộ nhớ:**
+> - **CSV**: Tiêu hao bộ nhớ $O(1)$ RAM từng dòng bằng `SplFileObject` đối với tệp UTF-8 (các tệp mã hóa khác như UTF-16/Windows-1258 được chuyển mã trong bộ đệm trước khi stream).
+> - **XLSX**: Đọc từng nút XML trực tiếp không nạp cây DOM của bảng tính. Bảng chuỗi dùng chung (`sharedStrings`) được cache trong RAM ($O(\text{số lượng chuỗi phân biệt})$); các ô số, ngày tháng, boolean và chuỗi nội dòng (`inlineStr`) được stream với $O(1)$ RAM.
+
 ### Đọc CSV theo luồng O(1) RAM
 
 Khi đọc file CSV UTF-8 ở chế độ chunk, `php-excel-helper` tự động chuyển sang đọc luồng qua `SplFileObject`, đảm bảo **bộ nhớ RAM O(1) ổn định** cho tệp UTF-8 (các tệp bảng mã khác như UTF-16 hoặc Windows-1258 được chuyển mã qua vùng đệm trước).
----
-
-## Tiện ích
-
-```php
-// Liệt kê danh sách sheet mà không cần load ô nào
-$sheets = Excel::sheetNames('so-tay.xlsx');
-
-// Lấy thông tin kích thước của các sheet
-$info = Excel::info('so-tay.xlsx');
-foreach ($info as $s) {
-    echo "Sheet {$s->name}: {$s->totalRows} dòng, {$s->totalColumns} cột\n";
-}
-
-// Đọc nhanh dòng tiêu đề
-$headers = Excel::headers('so-tay.xlsx', row: 1);
-```
 
 ---
 
@@ -377,22 +415,9 @@ Excel::template('mau_hoa_don.xlsx')
 
 ---
 
-## Các Tính Năng Nâng Cao v1.1.0
+## Các Tính Năng Nâng Cao
 
-### 1. Đọc Theo Luồng Generator (`Excel::stream`)
-
-Đọc tệp XLSX và CSV siêu lớn theo từng dòng bằng PHP `Generator`:
-
-```php
-foreach (Excel::stream('file_khong_lo.xlsx', ['start_row' => 2]) as $rowNumber => $row) {
-    // Xử lý từng dòng mượt mà với lượng RAM tiêu hao theo dòng cực thấp
-}
-```
-
-> **Đặc tính bộ nhớ:**
-> - **CSV**: Tiêu hao bộ nhớ $O(1)$ RAM từng dòng bằng `SplFileObject` đối với tệp UTF-8 (các tệp mã hóa khác như UTF-16/Windows-1258 được chuyển mã trong bộ đệm trước khi stream).
-> - **XLSX**: Đọc từng nút XML trực tiếp không nạp cây DOM của bảng tính. Bảng chuỗi dùng chung (`sharedStrings`) được cache trong RAM ($O(\text{số lượng chuỗi phân biệt})$); các ô số, ngày tháng, boolean và chuỗi nội dòng (`inlineStr`) được stream với $O(1)$ RAM.
-### 2. Chèn Ảnh & Logo
+### Chèn ảnh & Logo
 
 Chèn logo công ty, ảnh sản phẩm với tọa độ ô và kích thước pixel:
 
@@ -406,7 +431,7 @@ Excel::write([
 ])->save('bao_cao.xlsx');
 ```
 
-### 3. Ràng Buộc Dữ Liệu & Dropdown List (Data Validation)
+### Ràng buộc dữ liệu & Dropdown List (Data Validation)
 
 Tạo danh sách chọn dropdown và ràng buộc dữ liệu trực tiếp trong Excel:
 
@@ -421,7 +446,7 @@ Tạo danh sách chọn dropdown và ràng buộc dữ liệu trực tiếp tron
 ],
 ```
 
-### 4. Định Dạng Có Điều Kiện (Conditional Formatting)
+### Định dạng có điều kiện (Conditional Formatting)
 
 Tự động đổi màu ô dựa trên giá trị:
 
@@ -433,6 +458,27 @@ Tự động đổi màu ô dựa trên giá trị:
     ],
 ],
 ```
+
+---
+
+## Tiện ích
+
+```php
+// Liệt kê danh sách sheet mà không cần load ô nào
+$sheets = Excel::sheetNames('so-tay.xlsx');
+
+// Lấy thông tin kích thước của các sheet
+$info = Excel::info('so-tay.xlsx');
+foreach ($info as $s) {
+    echo "Sheet {$s->name}: {$s->totalRows} dòng, {$s->totalColumns} cột\n";
+}
+
+// Đọc nhanh dòng tiêu đề
+$headers = Excel::headers('so-tay.xlsx', row: 1);
+```
+
+---
+
 ## Đa Ngôn Ngữ & Bản Địa Hóa
 
 `php-excel-helper` tích hợp sẵn bộ dịch thông báo lỗi dữ liệu và nhãn dòng tổng bằng tiếng Anh (`en`) và tiếng Việt (`vi`):
@@ -452,7 +498,7 @@ Excel::resetDefaults();
 
 ---
 
-## Bảo Mật Hàng Đầu (Security First)
+## Bảo Mật Hàng Đầu
 
 1. **Phòng chống Formula Injection (CSV & Excel)**: Các chuỗi văn bản không tin cậy bắt đầu bằng các ký tự nguy hiểm `=`, `+`, `-`, `@`, `\t`, `\r` được lưu trữ tường minh dưới dạng chuỗi (`TYPE_STRING`) khi xuất Excel, và tự động thêm dấu `'` thoát hiểm khi xuất CSV.
 2. **Chống giả mạo định dạng (Format Spoofing)**: Nhận diện định dạng tệp qua magic bytes và chữ ký nhị phân thực tế, đối chiếu nghiêm ngặt với danh sách trắng cho phép (`allowed_formats`). Từ chối các tệp HTML, PHP hoặc mã độc đổi tên thành `.xlsx`.
@@ -462,8 +508,7 @@ Excel::resetDefaults();
 
 ---
 
-## Kiểu Dữ Liệu Tùy Biến (Custom Data Types)
-
+## Kiểu Dữ Liệu Tùy Biến (Custom Types)
 Đăng ký kiểu dữ liệu hai chiều (đọc & ghi) tùy biến một cách dễ dàng:
 
 ```php
