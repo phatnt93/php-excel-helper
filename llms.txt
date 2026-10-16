@@ -76,6 +76,23 @@ Excel::writer()
     ->save('file.xlsx');
 ```
 
+### Template Engine & Advanced Features (v1.1.0)
+```php
+// Fill Excel template while preserving logo, formatting, and formulas
+Excel::template('template.xlsx')
+    ->set('customer_name', 'Acme')
+    ->insertTable('item_name', $items)
+    ->save('filled.xlsx');
+
+// Generator streaming with low per-row memory overhead (O(1) memory for UTF-8 CSV)
+foreach (Excel::stream('huge.xlsx', ['start_row' => 2]) as $rowNum => $row) {
+    // Process row
+}
+```
+- Images: `'images' => [['path' => 'logo.png', 'cell' => 'A1', 'width' => 120]]`.
+- Validation: `'validation' => ['Approved', 'Pending', 'Rejected']` or integer/decimal/length ranges.
+- Conditional: `'conditional' => [['operator' => '<', 'value' => 0, 'color' => 'FF0000']]`.
+
 ## Available Types
 - `string`: keeps leading zeros, normalizes scientific float notation.
 - `int`: casts integers, rejects fractional floats.

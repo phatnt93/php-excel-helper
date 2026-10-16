@@ -32,6 +32,12 @@ Returns metadata (name, totalRows, totalColumns, lastColumnLetter, lastColumnInd
 ### Excel::headers(string $path, int $row = 1, int|string $sheet = 0): array<string, string>
 Extracts header values indexed by column letters (e.g. `['A' => 'Code', 'B' => 'Name']`).
 
+### Excel::template(string $templatePath): TemplateProcessor
+Opens an Excel template, fills cell placeholders, dynamically inserts tables with automatic footer shifting, and outputs via save(), download(), toString(), or spreadsheet().
+
+### Excel::stream(string $path, array $options = []): Generator
+Streams rows from an Excel or CSV file one-by-one as a Generator with low per-row memory overhead for XLSX and constant O(1) memory for UTF-8 CSV.
+
 ### Excel::registerType(TypeInterface $type, bool $replace = false): void
 Registers a custom column type.
 
@@ -127,7 +133,11 @@ Options passed to `Excel::write($config)`:
                 'name'   => ['header' => 'Name', 'width' => 25],
                 'salary' => ['header' => 'Salary', 'type' => 'number', 'format' => '#,##0'],
                 'active' => ['header' => 'Active', 'type' => 'bool', 'labels' => [true => 'Yes', false => 'No']],
+                'status' => ['header' => 'Status', 'validation' => ['Approved', 'Pending', 'Rejected']],
+                'balance' => ['header' => 'Balance', 'conditional' => [['operator' => '<', 'value' => 0, 'color' => 'FF0000']]],
             ],
+            'images'             => [['path' => 'logo.png', 'cell' => 'A1', 'width' => 120]],
+            'conditional_formatting' => [['range' => 'B2:B10', 'operator' => 'between', 'value' => [10, 50], 'bg' => 'FFFF00']],
             'data'               => [...], // array, Generator or Traversable
             'totals'             => ['salary' => 'sum'],
             'totals_label'       => 'TOTAL',
