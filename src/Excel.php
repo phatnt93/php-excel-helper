@@ -66,7 +66,7 @@ final class Excel
     }
     /**
      * Stream rows from an Excel (XLSX) or CSV file one-by-one as a Generator.
-     * Provides true O(1) memory consumption for ultra-large files.
+     * Provides low-memory row streaming (O(1) memory for UTF-8 CSV).
      *
      * @param array<string, mixed> $options
      * @return \Generator<int, array<string, mixed>>
@@ -75,8 +75,9 @@ final class Excel
     {
         $opts = \ExcelHelper\Config\ReadConfigParser::parse($options);
         $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $format = $opts->format !== 'auto' ? $opts->format : ($ext !== '' ? $ext : 'xlsx');
 
-        if ($ext === 'csv') {
+        if ($format === 'csv') {
             return \ExcelHelper\Reader\CsvStreamReader::stream($path, $opts);
         }
 

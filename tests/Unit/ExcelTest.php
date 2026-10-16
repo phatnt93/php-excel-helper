@@ -41,4 +41,23 @@ final class ExcelTest extends TestCase
         $writer = Excel::writer();
         $this->assertInstanceOf(\ExcelHelper\Writer\WriterBuilder::class, $writer);
     }
+    public function testTemplateReturnsTemplateProcessor(): void
+    {
+        $path = $this->tempPath('xlsx');
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        \PhpOffice\PhpSpreadsheet\IOFactory::createWriter($ss, 'Xlsx')->save($path);
+        $ss->disconnectWorksheets();
+
+        $tpl = Excel::template($path);
+        $this->assertInstanceOf(\ExcelHelper\Template\TemplateProcessor::class, $tpl);
+    }
+
+    public function testStreamReturnsGenerator(): void
+    {
+        $path = $this->tempPath('csv');
+        file_put_contents($path, "A,B\n1,2\n");
+
+        $gen = Excel::stream($path);
+        $this->assertInstanceOf(\Generator::class, $gen);
+    }
 }
