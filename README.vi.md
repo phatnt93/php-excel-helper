@@ -46,6 +46,7 @@ Thư viện PHP hiện đại, an toàn và tinh gọn giúp đọc và ghi các
 - [Bảo mật hàng đầu](#bảo-mật-hàng-đầu)
 - [Kiểu dữ liệu tùy biến (Custom Types)](#kiểu-dữ-liệu-tùy-biến-custom-types)
 - [Câu hỏi thường gặp (FAQ)](#câu-hỏi-thường-gặp-faq)
+- [Tác giả](#tác-giả)
 - [Giấy phép](#giấy-phép)
 ---
 
@@ -578,8 +579,11 @@ Excel::write([
 ])->save('bao-cao.xlsx');
 ```
 </details>
-
 ---
+
+## Tác giả
+
+- **Phát Nguyễn** (Phat Nguyen) - [phatnt93@gmail.com](mailto:phatnt93@gmail.com) - [GitHub](https://github.com/phatnt93)
 
 ---
 

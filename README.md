@@ -46,6 +46,7 @@ Read and write Excel and CSV spreadsheets (`.xlsx`, `.xls`, `.ods`, `.csv`) in P
 - [Security First](#security-first)
 - [Custom Data Types](#custom-data-types)
 - [How-To Recipes (FAQ)](#how-to-recipes-faq)
+- [Authors & Contributors](#authors--contributors)
 - [License](#license)
 ---
 
@@ -600,6 +601,12 @@ Excel::write([
 ])->save('export.xlsx');
 ```
 </details>
+
+---
+
+## Authors & Contributors
+
+- **Phat Nguyen** - Lead Developer - [phatnt93@gmail.com](mailto:phatnt93@gmail.com) - [GitHub](https://github.com/phatnt93)
 
 ---
 
