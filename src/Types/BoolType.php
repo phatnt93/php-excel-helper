@@ -80,7 +80,7 @@ final class BoolType implements TypeInterface
         $labels = $context->get('labels');
         if (is_array($labels)) {
             $boolVal = (bool) $value;
-            $label = $labels[$boolVal] ?? $labels[$boolVal ? 1 : 0] ?? null;
+            $label = $labels[$boolVal ? 'true' : 'false'] ?? $labels[$boolVal] ?? $labels[$boolVal ? 1 : 0] ?? null;
             if ($label !== null) {
                 return CellValue::string($label);
             }

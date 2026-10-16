@@ -80,9 +80,11 @@ final class DecimalType implements TypeInterface
         }
 
         $decimals = $context->get('decimals');
-        $formatCode = is_int($decimals) && $decimals > 0
-            ? '0.' . str_repeat('0', $decimals)
-            : '0.00';
+        if (is_int($decimals)) {
+            $formatCode = $decimals > 0 ? '0.' . str_repeat('0', $decimals) : '0';
+        } else {
+            $formatCode = '0.00';
+        }
 
         return CellValue::numeric((float) $value, $formatCode);
     }

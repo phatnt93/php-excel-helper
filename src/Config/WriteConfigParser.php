@@ -185,9 +185,28 @@ final class WriteConfigParser
             throw InvalidConfigException::atPath($path->append('data'), '"data" must be an iterable (array or Traversable/Generator).');
         }
 
-        /** @var array<string, string>|null $totals */
-        $totals = isset($sheetConfig['totals']) && is_array($sheetConfig['totals']) ? $sheetConfig['totals'] : null;
-
+        /** @var array<string, mixed>|null $rawTotals */
+        $rawTotals = isset($sheetConfig['totals']) && is_array($sheetConfig['totals']) ? $sheetConfig['totals'] : null;
+        $totals = null;
+        if ($rawTotals !== null) {
+            $colKeys = array_map(static fn(WriteColumn $c) => $c->key, $columns);
+            $totals = [];
+            foreach ($rawTotals as $totKey => $totFunc) {
+                if (!is_string($totFunc) || !preg_match('/^[A-Za-z][A-Za-z0-9_.]*$/D', $totFunc)) {
+                    throw InvalidConfigException::atPath(
+                        $path->append('totals')->append((string) $totKey),
+                        sprintf('Invalid formula function "%s" in totals. Expected valid function name like "sum", "average", "count", "min", "max".', is_scalar($totFunc) ? (string) $totFunc : gettype($totFunc)),
+                    );
+                }
+                if ($colKeys !== [] && !in_array((string) $totKey, $colKeys, true)) {
+                    throw InvalidConfigException::atPath(
+                        $path->append('totals')->append((string) $totKey),
+                        sprintf('Unknown column key "%s" in totals. Defined columns are: %s.', $totKey, implode(', ', $colKeys)),
+                    );
+                }
+                $totals[(string) $totKey] = $totFunc;
+            }
+        }
         /** @var list<string> $merges */
         $merges = isset($sheetConfig['merges']) && is_array($sheetConfig['merges'])
             ? array_values(array_map('strval', $sheetConfig['merges']))

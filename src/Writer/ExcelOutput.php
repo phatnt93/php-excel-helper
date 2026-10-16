@@ -49,8 +49,16 @@ final class ExcelOutput
         try {
             $writer->save($tempPath);
             if (!@rename($tempPath, $path)) {
-                @unlink($tempPath);
-                throw WriterException::failedToSave($path);
+                if (file_exists($path)) {
+                    @unlink($path);
+                    if (!@rename($tempPath, $path)) {
+                        @unlink($tempPath);
+                        throw WriterException::failedToSave($path);
+                    }
+                } else {
+                    @unlink($tempPath);
+                    throw WriterException::failedToSave($path);
+                }
             }
         } catch (Throwable $e) {
             if (file_exists($tempPath)) {

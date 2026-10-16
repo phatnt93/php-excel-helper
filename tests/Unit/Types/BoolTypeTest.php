@@ -108,5 +108,13 @@ final class BoolTypeTest extends TestCase
         $valLabeled = $this->type->write(true, $ctxLabels);
         $this->assertSame('Active', $valLabeled->value);
         $this->assertSame(DataType::TYPE_STRING, $valLabeled->dataType);
+        // Custom labels with string keys 'true' / 'false'
+        $ctxStringLabels = new ColumnContext('active', [
+            'labels' => ['true' => 'Có', 'false' => 'Không'],
+        ]);
+        $valStringTrue = $this->type->write(true, $ctxStringLabels);
+        $valStringFalse = $this->type->write(false, $ctxStringLabels);
+        $this->assertSame('Có', $valStringTrue->value);
+        $this->assertSame('Không', $valStringFalse->value);
     }
 }

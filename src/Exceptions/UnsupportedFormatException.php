@@ -11,6 +11,10 @@ use InvalidArgumentException;
  */
 class UnsupportedFormatException extends InvalidArgumentException implements ExcelHelperException
 {
+    public static function withMessage(string $message): self
+    {
+        return new self($message);
+    }
     /**
      * @param list<string> $allowed
      */

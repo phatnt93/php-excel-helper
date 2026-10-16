@@ -24,6 +24,10 @@ final class CsvStreamReader
      */
     public static function stream(string $path, ReadOptions $options): \Generator
     {
+        if (!file_exists($path) || is_dir($path)) {
+            throw ReaderException::fileNotFound($path);
+        }
+
         $delimiter = self::resolveDelimiter($path, $options->csv['delimiter'] ?? 'auto');
         $enclosure = (string) ($options->csv['enclosure'] ?? '"');
         $escape = (string) ($options->csv['escape'] ?? '\\');
@@ -137,6 +141,10 @@ final class CsvStreamReader
         int $chunkSize,
         callable $callback,
     ): ReadSummary {
+        if (!file_exists($path) || is_dir($path)) {
+            throw ReaderException::fileNotFound($path);
+        }
+
         $delimiter = self::resolveDelimiter($path, $options->csv['delimiter'] ?? 'auto');
         $enclosure = (string) ($options->csv['enclosure'] ?? '"');
         $escape = (string) ($options->csv['escape'] ?? '\\');

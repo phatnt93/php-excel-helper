@@ -133,5 +133,8 @@ final class NumericTypesTest extends TestCase
         $val = $decimalType->write('12.34', $ctx);
         $this->assertSame(12.34, $val->value);
         $this->assertSame('0.00', $val->numberFormat);
+        $ctxZero = new ColumnContext('price', ['decimals' => 0]);
+        $valZero = $decimalType->write('12.34', $ctxZero);
+        $this->assertSame('0', $valZero->numberFormat);
     }
 }

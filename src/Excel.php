@@ -74,16 +74,23 @@ final class Excel
     public static function stream(string $path, array $options = []): \Generator
     {
         $opts = \ExcelHelper\Config\ReadConfigParser::parse($options);
-        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $format = $opts->format !== 'auto' ? $opts->format : ($ext !== '' ? $ext : 'xlsx');
+        $inspection = \ExcelHelper\Reader\FileInspector::inspect($path, $opts);
+        $format = $inspection['format'];
 
         if ($format === 'csv') {
             return \ExcelHelper\Reader\CsvStreamReader::stream($path, $opts);
         }
 
-        return \ExcelHelper\Reader\FastXlsxStreamReader::stream($path, $opts);
-    }
+        if ($format === 'xlsx') {
+            return \ExcelHelper\Reader\FastXlsxStreamReader::stream($path, $opts);
+        }
 
+        throw \ExcelHelper\Exceptions\UnsupportedFormatException::withMessage(sprintf(
+            'Streaming is only supported for "xlsx" and "csv" formats. Provided: "%s". Use Excel::read() or Excel::chunk() for "%s".',
+            $format,
+            $format,
+        ));
+    }
     /**
      * Begin a fluent reader builder.
      */

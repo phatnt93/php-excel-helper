@@ -227,6 +227,29 @@ final class WriterEdgeCasesTest extends TestCase
         $this->assertSame('Tổng cộng', $ss->getActiveSheet()->getCell('A3')->getValue());
         $ss->disconnectWorksheets();
     }
+    public function testInvalidTotalsFunctionThrowsInvalidConfigException(): void
+    {
+        $this->expectException(\ExcelHelper\Exceptions\InvalidConfigException::class);
+        $this->expectExceptionMessage('Invalid formula function');
+
+        \ExcelHelper\Config\WriteConfigParser::parse([
+            'columns' => ['val' => 'Số lượng'],
+            'totals' => ['val' => 'SUM;calc'],
+            'data' => [],
+        ]);
+    }
+
+    public function testUnknownColumnInTotalsThrowsInvalidConfigException(): void
+    {
+        $this->expectException(\ExcelHelper\Exceptions\InvalidConfigException::class);
+        $this->expectExceptionMessage('Unknown column key "unknown_col" in totals');
+
+        \ExcelHelper\Config\WriteConfigParser::parse([
+            'columns' => ['val' => 'Số lượng'],
+            'totals' => ['unknown_col' => 'sum'],
+            'data' => [],
+        ]);
+    }
     public function testImageInsertion(): void
     {
         $imgPath = $this->tempPath('png');

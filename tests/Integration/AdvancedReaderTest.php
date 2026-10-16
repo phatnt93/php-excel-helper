@@ -326,4 +326,36 @@ final class AdvancedReaderTest extends TestCase
 
         $this->assertSame(1, $summary->totalRows());
     }
+    public function testStreamMissingFileThrowsReaderException(): void
+    {
+        $this->expectException(\ExcelHelper\Exceptions\ReaderException::class);
+        $gen = Excel::stream($this->tempPath('xlsx'));
+        $gen->current();
+    }
+
+    public function testCsvStreamMissingFileThrowsReaderException(): void
+    {
+        $this->expectException(\ExcelHelper\Exceptions\ReaderException::class);
+        $gen = \ExcelHelper\Reader\CsvStreamReader::stream($this->tempPath('csv'), new \ExcelHelper\Reader\ReadOptions());
+        $gen->current();
+    }
+
+    public function testCsvChunkMissingFileThrowsReaderException(): void
+    {
+        $this->expectException(\ExcelHelper\Exceptions\ReaderException::class);
+        \ExcelHelper\Reader\CsvStreamReader::chunk(
+            $this->tempPath('csv'),
+            new \ExcelHelper\Reader\ReadOptions(),
+            10,
+            static fn() => true,
+        );
+    }
+
+    public function testStreamUnsupportedFormatThrowsUnsupportedFormatException(): void
+    {
+        $odsPath = $this->createSpreadsheetFile([['A', 'B'], [1, 2]], 'ods');
+        $this->expectException(\ExcelHelper\Exceptions\UnsupportedFormatException::class);
+        $this->expectExceptionMessage('Streaming is only supported for "xlsx" and "csv" formats');
+        Excel::stream($odsPath);
+    }
 }
