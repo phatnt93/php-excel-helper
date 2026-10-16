@@ -309,8 +309,7 @@ echo "Tổng số dòng đã xử lý: {$summary->totalRows()}\n";
 
 ### Đọc CSV theo luồng O(1) RAM
 
-Khi đọc file CSV ở chế độ chunk, `php-excel-helper` tự động chuyển sang đọc luồng qua `SplFileObject`, đảm bảo **bộ nhớ RAM ổn định tuyệt đối dưới 10MB** ngay cả với file CSV dung lượng hàng gigabyte.
-
+Khi đọc file CSV UTF-8 ở chế độ chunk, `php-excel-helper` tự động chuyển sang đọc luồng qua `SplFileObject`, đảm bảo **bộ nhớ RAM O(1) ổn định** cho tệp UTF-8 (các tệp bảng mã khác như UTF-16 hoặc Windows-1258 được chuyển mã qua vùng đệm trước).
 ---
 
 ## Tiện ích
@@ -368,9 +367,8 @@ foreach (Excel::stream('file_khong_lo.xlsx', ['start_row' => 2]) as $rowNumber =
 ```
 
 > **Đặc tính bộ nhớ:**
-> - **CSV**: Tiêu hao bộ nhớ không đổi tuyệt đối $O(1)$ RAM từng dòng bằng `SplFileObject`.
+> - **CSV**: Tiêu hao bộ nhớ $O(1)$ RAM từng dòng bằng `SplFileObject` đối với tệp UTF-8 (các tệp mã hóa khác như UTF-16/Windows-1258 được chuyển mã trong bộ đệm trước khi stream).
 > - **XLSX**: Đọc từng nút XML trực tiếp không nạp cây DOM của bảng tính. Bảng chuỗi dùng chung (`sharedStrings`) được cache trong RAM ($O(\text{số lượng chuỗi phân biệt})$); các ô số, ngày tháng, boolean và chuỗi nội dòng (`inlineStr`) được stream với $O(1)$ RAM.
-
 ### 2. Chèn Ảnh & Logo
 
 Chèn logo công ty, ảnh sản phẩm với tọa độ ô và kích thước pixel:

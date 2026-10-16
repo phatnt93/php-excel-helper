@@ -384,8 +384,7 @@ echo "Total rows processed: {$summary->totalRows()}\n";
 
 ### Zero-Memory CSV Streaming
 
-When reading CSV files in chunk mode, `php-excel-helper` bypasses PhpSpreadsheet entirely and streams lines via `SplFileObject`. This guarantees **constant O(1) memory usage** even on files with 500,000+ lines.
-
+When reading UTF-8 CSV files in chunk mode, `php-excel-helper` bypasses PhpSpreadsheet entirely and streams lines via `SplFileObject`. This guarantees **constant O(1) memory usage** for UTF-8 files. (Non-UTF-8 encodings such as UTF-16 or Windows-1258 are transcoded in a memory buffer first).
 ---
 
 ## Utilities
@@ -444,7 +443,7 @@ foreach (Excel::stream('huge_file.xlsx', ['start_row' => 2]) as $rowNumber => $r
 ```
 
 > **Memory Characteristics:**
-> - **CSV**: Strictly constant $O(1)$ memory usage line-by-line via `SplFileObject`.
+> - **CSV**: Strictly constant $O(1)$ memory usage line-by-line via `SplFileObject` for UTF-8 files (non-UTF-8 encodings like UTF-16/Windows-1258 are transcoded in a buffer before streaming).
 > - **XLSX**: Rows are pulled node-by-node without loading the spreadsheet DOM tree. The shared-strings table is cached in memory ($O(\text{unique text strings})$); numeric, date, boolean, and inline-string cells stream with $O(1)$ memory.
 ### 2. Image & Logo Insertion
 
