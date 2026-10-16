@@ -209,6 +209,78 @@ final class FastXlsxStreamReaderTest extends TestCase
         $this->assertSame('Inline Text Value', $result->rows()[0]['inline']);
         $this->assertSame('Normal String', $result->rows()[0]['shared']);
     }
+    public function testFastXlsxRichInlineStringsParityWithExcelRead(): void
+    {
+        $savePath = $this->tempPath('xlsx');
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $ss->getActiveSheet();
+        $sheet->setCellValue('A1', 'Placeholder');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $writer->save($savePath);
+        $ss->disconnectWorksheets();
+
+        $zip = new \ZipArchive();
+        $zip->open($savePath);
+        $sheetXml = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+        $sheetXml = preg_replace(
+            '/<c r="A1"[^>]*>.*?<\/c>/s',
+            '<c r="A1" t="inlineStr"><is><r><t>Hello </t></r><r><rPr><b/></rPr><t>World Rich</t></r></is></c>',
+            $sheetXml,
+        );
+        $zip->addFromString('xl/worksheets/sheet1.xml', (string) $sheetXml);
+        $zip->close();
+
+        // Parity test: Excel::read vs Excel::stream
+        $readResult = Excel::read($savePath, ['start_row' => 1])->rows()[0]['A'];
+        $streamResult = iterator_to_array(Excel::stream($savePath, ['start_row' => 1]))[1]['A'];
+
+        $this->assertSame('Hello World Rich', $readResult);
+        $this->assertSame('Hello World Rich', $streamResult);
+        $this->assertSame($readResult, $streamResult);
+    }
+
+    public function testFastXlsxReorderedSheetRelationshipsParityWithExcelRead(): void
+    {
+        $savePath = $this->tempPath('xlsx');
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $s1 = $ss->getActiveSheet();
+        $s1->setTitle('Alpha');
+        $s1->setCellValue('A1', 'Alpha Content');
+        $s2 = $ss->createSheet();
+        $s2->setTitle('Beta');
+        $s2->setCellValue('A1', 'Beta Content');
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $writer->save($savePath);
+        $ss->disconnectWorksheets();
+
+        // Swap relationship targets in xl/_rels/workbook.xml.rels
+        $zip = new \ZipArchive();
+        $zip->open($savePath);
+        $relsXml = (string) $zip->getFromName('xl/_rels/workbook.xml.rels');
+        $swapped = str_replace(
+            ['Target="worksheets/sheet1.xml"', 'Target="worksheets/sheet2.xml"'],
+            ['Target="worksheets/sheet_TEMP.xml"', 'Target="worksheets/sheet1.xml"'],
+            $relsXml,
+        );
+        $swapped = str_replace('Target="worksheets/sheet_TEMP.xml"', 'Target="worksheets/sheet2.xml"', $swapped);
+        $zip->addFromString('xl/_rels/workbook.xml.rels', $swapped);
+        $zip->close();
+
+        // Both Excel::read and Excel::stream must resolve via r:id relationships with 100% parity
+        $readAlpha = Excel::read($savePath, ['sheet' => 'Alpha', 'start_row' => 1])->rows()[0]['A'];
+        $readBeta = Excel::read($savePath, ['sheet' => 'Beta', 'start_row' => 1])->rows()[0]['A'];
+
+        $streamAlpha = iterator_to_array(Excel::stream($savePath, ['sheet' => 'Alpha', 'start_row' => 1]))[1]['A'];
+        $streamBeta = iterator_to_array(Excel::stream($savePath, ['sheet' => 'Beta', 'start_row' => 1]))[1]['A'];
+
+        $this->assertSame('Beta Content', $readAlpha);
+        $this->assertSame('Alpha Content', $readBeta);
+
+        $this->assertSame($readAlpha, $streamAlpha);
+        $this->assertSame($readBeta, $streamBeta);
+    }
 
     public function testCsvStreamLazinessAndBoundedMemory(): void
     {

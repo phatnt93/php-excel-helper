@@ -275,22 +275,41 @@ final class FastXlsxStreamReader
      */
     private static function resolveSheetXml(string $zipPath, int|string $sheet): string
     {
-        // Check workbook.xml for sheet mappings
         $zip = new ZipArchive();
         if ($zip->open($zipPath) !== true) {
             return 'xl/worksheets/sheet1.xml';
         }
 
+        // 1. Parse relationship targets from xl/_rels/workbook.xml.rels
+        $rels = [];
+        $relsXml = $zip->getFromName('xl/_rels/workbook.xml.rels');
+        if ($relsXml !== false && preg_match_all('/<Relationship[^>]+Id="([^"]+)"[^>]+Target="([^"]+)"/u', $relsXml, $rMatches, PREG_SET_ORDER)) {
+            foreach ($rMatches as $rMatch) {
+                $rId = (string) $rMatch[1];
+                $target = (string) $rMatch[2];
+                $cleanTarget = str_starts_with($target, '/') ? ltrim($target, '/') : 'xl/' . ltrim($target, '/');
+                $rels[$rId] = $cleanTarget;
+            }
+        }
+
+        // 2. Parse sheet definitions from xl/workbook.xml and resolve target via r:id
         $sheets = [];
         $xml = $zip->getFromName('xl/workbook.xml');
         $zip->close();
 
-        if ($xml !== false && preg_match_all('/<sheet[^>]+name="([^"]+)"[^>]+sheetId="([^"]+)"/u', $xml, $m)) {
-            foreach ($m[1] as $idx => $name) {
+        if ($xml !== false && preg_match_all('/<sheet\s+([^>]+)\/?>/u', $xml, $sheetMatches)) {
+            foreach ($sheetMatches[1] as $idx => $sheetAttrs) {
+                preg_match('/name="([^"]+)"/u', $sheetAttrs, $nameMatch);
+                preg_match('/r:id="([^"]+)"/u', $sheetAttrs, $ridMatch);
+
+                $name = $nameMatch[1] ?? ('Sheet' . ($idx + 1));
+                $rId = $ridMatch[1] ?? null;
+                $file = ($rId !== null && isset($rels[$rId])) ? $rels[$rId] : ('xl/worksheets/sheet' . ($idx + 1) . '.xml');
+
                 $sheets[] = [
                     'index' => $idx,
                     'name' => $name,
-                    'file' => 'xl/worksheets/sheet' . ($idx + 1) . '.xml',
+                    'file' => $file,
                 ];
             }
         }
@@ -312,7 +331,6 @@ final class FastXlsxStreamReader
                 return $s['file'];
             }
         }
-
         $names = array_column($sheets, 'name');
         throw SheetNotFoundException::byName($sheet, $names);
     }
@@ -326,7 +344,7 @@ final class FastXlsxStreamReader
         $rawRow = [];
         $rowXml = $reader->readOuterXml();
 
-        if (preg_match_all('/<c\s+([^>]+)>(?:<f[^>]*>.*?<\/f>)?(?:<v>(.*?)<\/v>|<is>(?:<t[^>]*>(.*?)<\/t>)<\/is>)?<\/c>|<c\s+([^>]+)\/>/s', $rowXml, $matches, PREG_SET_ORDER)) {
+        if (preg_match_all('/<c\s+([^>]+)>(?:<f[^>]*>.*?<\/f>)?(?:<v>(.*?)<\/v>|<is>(.*?)<\/is>)?<\/c>|<c\s+([^>]+)\/>/s', $rowXml, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
                 $match1 = (string) ($match[1] ?? '');
                 $match4 = (string) ($match[4] ?? '');
@@ -346,7 +364,11 @@ final class FastXlsxStreamReader
                     $sIdx = (int) $vVal;
                     $cellVal = $sharedStrings[$sIdx] ?? '';
                 } elseif ($type === 'inlineStr' && $isVal !== null) {
-                    $cellVal = html_entity_decode($isVal, ENT_QUOTES | ENT_XML1, 'UTF-8');
+                    if (preg_match_all('/<t[^>]*>(.*?)<\/t>/s', $isVal, $tMatches)) {
+                        $cellVal = html_entity_decode(implode('', $tMatches[1]), ENT_QUOTES | ENT_XML1, 'UTF-8');
+                    } else {
+                        $cellVal = html_entity_decode(strip_tags($isVal), ENT_QUOTES | ENT_XML1, 'UTF-8');
+                    }
                 } elseif ($type === 'b') {
                     $cellVal = ($vVal === '1');
                 } elseif ($vVal !== null && $vVal !== '') {

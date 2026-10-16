@@ -52,12 +52,26 @@ final class ExcelTest extends TestCase
         $this->assertInstanceOf(\ExcelHelper\Template\TemplateProcessor::class, $tpl);
     }
 
-    public function testStreamReturnsGenerator(): void
+    public function testStreamAdvancesGeneratorAndExplicitFormatNoExtension(): void
     {
         $path = $this->tempPath('csv');
-        file_put_contents($path, "A,B\n1,2\n");
+        file_put_contents($path, "A,B\n10,20\n30,40\n");
 
-        $gen = Excel::stream($path);
+        $gen = Excel::stream($path, ['start_row' => 2]);
         $this->assertInstanceOf(\Generator::class, $gen);
+        $rows = iterator_to_array($gen);
+        $this->assertCount(2, $rows);
+        $this->assertSame('10', $rows[2]['A']);
+        $this->assertSame('20', $rows[2]['B']);
+
+        // Explicit format with no extension route
+        $noExtPath = $this->tempPath('') . '_no_extension';
+        file_put_contents($noExtPath, "Col1,Col2\nVal1,Val2\n");
+
+        $genNoExt = Excel::stream($noExtPath, ['format' => 'csv', 'start_row' => 2]);
+        $rowsNoExt = iterator_to_array($genNoExt);
+        $this->assertCount(1, $rowsNoExt);
+        $this->assertSame('Val1', $rowsNoExt[2]['A']);
+        @unlink($noExtPath);
     }
 }
