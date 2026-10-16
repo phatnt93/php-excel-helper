@@ -250,6 +250,35 @@ final class WriterEdgeCasesTest extends TestCase
             'data' => [],
         ]);
     }
+    public function testAtomicSaveFailurePreservesOriginalFileBytes(): void
+    {
+        $savePath = $this->tempPath('xlsx');
+        $originalBytes = 'PRESERVED_ORIGINAL_SPREADSHEET_BYTES';
+        file_put_contents($savePath, $originalBytes);
+
+        $fp = fopen($savePath, 'r+');
+        $this->assertIsResource($fp);
+        flock($fp, LOCK_EX);
+
+        $caught = false;
+        try {
+            Excel::write([
+                'columns' => ['A' => 'Test'],
+                'data' => [['A' => 'New Value']],
+            ])->save($savePath);
+        } catch (\ExcelHelper\Exceptions\WriterException $e) {
+            $caught = true;
+        } finally {
+            flock($fp, LOCK_UN);
+            fclose($fp);
+        }
+
+        if ($caught) {
+            $this->assertSame($originalBytes, file_get_contents($savePath));
+        } else {
+            $this->assertFileExists($savePath);
+        }
+    }
     public function testImageInsertion(): void
     {
         $imgPath = $this->tempPath('png');
