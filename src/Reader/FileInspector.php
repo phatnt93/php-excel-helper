@@ -42,8 +42,10 @@ final class FileInspector
      * @throws ReaderException
      * @throws UnsupportedFormatException
      */
-    public static function inspect(string $path, ReadOptions $options): array
+    public static function inspect(string $path, ?ReadOptions $options = null): array
     {
+        $options ??= new ReadOptions();
+
         if (!file_exists($path)) {
             throw ReaderException::fileNotFound($path);
         }

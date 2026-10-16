@@ -29,6 +29,8 @@ final class SheetDefinition
      * @param int $autoSizeMaxRows Row count threshold to disable auto-sizing
      * @param ?float $rowHeight Custom row height
      * @param list<string> $merges Custom cell merges (e.g. ['A1:D1'])
+     * @param list<ImageDefinition> $images Images or logos to insert into the worksheet
+     * @param list<array<string, mixed>> $conditionalFormatting Conditional formatting rules
      * @param (callable(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet, SheetLayout): void)|null $tap Hook callback
      */
     public function __construct(
@@ -52,6 +54,8 @@ final class SheetDefinition
         public readonly int $autoSizeMaxRows = 5000,
         public readonly ?float $rowHeight = null,
         public readonly array $merges = [],
+        public readonly array $images = [],
+        public readonly array $conditionalFormatting = [],
         public readonly mixed $tap = null,
     ) {}
 }

@@ -222,6 +222,52 @@ final class SheetBuilder
 
         return $this;
     }
+    /**
+     * @param array<string, mixed>|ImageDefinition|string $image
+     */
+    public function image(
+        string|array|ImageDefinition $image,
+        string $cell = 'A1',
+        ?int $width = null,
+        ?int $height = null,
+    ): self {
+        $images = $this->config['images'] ?? [];
+        if ($image instanceof ImageDefinition) {
+            $images[] = [
+                'path' => $image->path,
+                'cell' => $image->cell,
+                'width' => $image->width,
+                'height' => $image->height,
+                'offset_x' => $image->offsetX,
+                'offset_y' => $image->offsetY,
+                'name' => $image->name,
+                'description' => $image->description,
+            ];
+        } elseif (is_array($image)) {
+            $images[] = $image;
+        } else {
+            $images[] = [
+                'path' => $image,
+                'cell' => $cell,
+                'width' => $width,
+                'height' => $height,
+            ];
+        }
+        $this->config['images'] = $images;
+
+        return $this;
+    }
+
+    /**
+     * @param list<array<string, mixed>|ImageDefinition|string> $images
+     */
+    public function images(array $images): self
+    {
+        $existing = $this->config['images'] ?? [];
+        $this->config['images'] = array_merge($existing, $images);
+
+        return $this;
+    }
 
     /**
      * @param callable(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet, SheetLayout): void $tap

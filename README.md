@@ -404,6 +404,86 @@ foreach ($info as $sheetInfo) {
 $headers = Excel::headers('workbook.xlsx', row: 1);
 ```
 
+
+---
+
+## Template Engine (`Excel::template`)
+
+Fill pre-formatted Excel templates (invoices, contracts, certificates) while preserving branding, logos, cell formats, and complex formulas:
+
+```php
+Excel::template('templates/invoice_template.xlsx')
+    ->set('customer_name', 'Acme Corp')
+    ->set('invoice_no', 'INV-2026-001')
+    ->setValues([
+        'date' => '2026-10-16',
+        'due_date' => '2026-11-16',
+        'B15' => 'Direct cell address filling',
+    ])
+    ->insertTable('item_name', [
+        ['item_name' => 'Web Hosting Pro', 'qty' => 1, 'price' => 2500000],
+        ['item_name' => 'Domain .com', 'qty' => 2, 'price' => 750000],
+    ])
+    ->save('exports/invoice_001.xlsx');
+```
+
+* Sub-rows in `insertTable()` duplicate formatting and automatically shift footer rows and total formulas downward!
+
+---
+
+## Advanced v1.1.0 Features
+
+### 1. Fast Streaming Generator (`Excel::stream`)
+
+Read ultra-large XLSX and CSV spreadsheets row-by-row as a PHP `Generator` with constant O(1) memory:
+
+```php
+foreach (Excel::stream('huge_file.xlsx', ['start_row' => 2]) as $rowNumber => $row) {
+    // Process single row with negligible memory overhead
+}
+```
+
+### 2. Image & Logo Insertion
+
+Insert corporate logos and product thumbnails with coordinates and pixel dimensions:
+
+```php
+Excel::write([
+    'images' => [
+        ['path' => 'assets/logo.png', 'cell' => 'A1', 'width' => 120, 'height' => 50],
+    ],
+    'columns' => [...],
+    'data' => [...],
+])->save('report.xlsx');
+```
+
+### 3. Data Validation & Dropdowns
+
+Add Excel dropdown selection lists and validation rules directly to columns:
+
+```php
+'status' => [
+    'header' => 'Status',
+    'validation' => ['Approved', 'Pending', 'Rejected'], // Dropdown list
+],
+'age' => [
+    'header' => 'Age',
+    'validation' => ['type' => 'integer', 'min' => 18, 'max' => 65],
+],
+```
+
+### 4. Conditional Formatting
+
+Highlight values automatically with Excel conditional styles:
+
+```php
+'balance' => [
+    'header' => 'Balance',
+    'conditional' => [
+        ['operator' => '<', 'value' => 0, 'color' => 'FF0000', 'bg' => 'FFE0E0', 'bold' => true],
+    ],
+],
+```
 ---
 
 ## Security First

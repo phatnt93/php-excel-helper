@@ -301,6 +301,29 @@ final class WriterBuilder
 
         return $this;
     }
+    /**
+     * @param array<string, mixed>|\ExcelHelper\Writer\ImageDefinition|string $image
+     */
+    public function image(
+        string|array|\ExcelHelper\Writer\ImageDefinition $image,
+        string $cell = 'A1',
+        ?int $width = null,
+        ?int $height = null,
+    ): self {
+        $this->singleSheet->image($image, $cell, $width, $height);
+
+        return $this;
+    }
+
+    /**
+     * @param list<array<string, mixed>|\ExcelHelper\Writer\ImageDefinition|string> $images
+     */
+    public function images(array $images): self
+    {
+        $this->singleSheet->images($images);
+
+        return $this;
+    }
 
     /**
      * @param callable(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet, SheetLayout): void $tap

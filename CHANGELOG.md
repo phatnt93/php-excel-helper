@@ -5,6 +5,27 @@ All notable changes to `phatnt93/php-excel-helper` will be documented in this fi
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-10-16
+
+### Added
+- **Template Engine (`Excel::template()`):**
+  - Loads existing Excel template workbooks, preserving existing styles, fonts, formulas, and layouts.
+  - Replaces placeholders (`{{key}}` or `{{ key }}`) across the spreadsheet with direct value and type mapping (`set()`, `setValues()`).
+  - Inserts dynamic table data with automatic downward shifting of subsequent rows and style inheritance (`insertTable()`).
+- **Image & Logo Insertion (`ImageDefinition`):**
+  - Inserts logos and images into worksheets with custom coordinates, width, height, aspect ratio control, and pixel offsets.
+  - Configurable in array configuration (`images => [...]`) or via fluent builders (`image()`, `images()`).
+- **Data Validation & Dropdown Lists:**
+  - Adds cell/column data validation rules (`validation => [...]`): `list` (dropdown selection), `whole` (integer range), `decimal`, and `text_length`.
+  - Configurable error alerts, custom titles, and messages directly in Excel.
+- **Conditional Formatting:**
+  - Sheet-level (`conditional_formatting => [...]`) and column-level (`conditional => [...]`) rules.
+  - Supports operators (`<`, `<=`, `>`, `>=`, `==`, `!=`, `between`), custom font colors, bold/italic, and background fill styling.
+- **Fast Streaming XLSX Reader (`FastXlsxStreamReader`, `Excel::stream()`):**
+  - Pull-based streaming XMLReader over ZipArchive with true O(1) memory footprint for ultra-large XLSX spreadsheets.
+  - Provides `Excel::stream()` generator for reading XLSX and CSV row-by-row with minimal RAM usage.
+- New standalone demonstration example `examples/07_advanced_v1_1_features.php`.
+- Test suite expanded to 257 tests, 872 assertions, 100% passing, line coverage >= 90%.
 ## [1.0.0] - 2026-10-16
 
 ### Added

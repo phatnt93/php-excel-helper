@@ -17,11 +17,19 @@ final class CsvStreamReader
     private const DELIMITER_CANDIDATES = [',', ';', "\t", '|'];
 
     /**
-     * @param callable(list<array<string, mixed>>, ChunkContext): (bool|void) $callback
-     *
-     * @throws ReaderException
-     * @throws RowValidationException
+     * @return \Generator<int, array<string, mixed>>
      */
+    public static function stream(string $path, ReadOptions $options): \Generator
+    {
+        $buffer = [];
+        self::chunk($path, $options, 1000, static function (array $chunk) use (&$buffer): void {
+            $buffer = array_merge($buffer, $chunk);
+        });
+
+        foreach ($buffer as $idx => $row) {
+            yield $idx => $row;
+        }
+    }
     public static function chunk(
         string $path,
         ReadOptions $options,

@@ -7,6 +7,7 @@ namespace ExcelHelper\Config;
 use ExcelHelper\Exceptions\InvalidConfigException;
 use ExcelHelper\Support\Coordinate;
 use ExcelHelper\Types\TypeRegistry;
+use ExcelHelper\Writer\ImageDefinition;
 use ExcelHelper\Writer\SheetDefinition;
 use ExcelHelper\Writer\WorkbookDefinition;
 use ExcelHelper\Writer\WriteColumn;
@@ -45,6 +46,8 @@ final class WriteConfigParser
         'auto_size_max_rows',
         'row_height',
         'merges',
+        'images',
+        'conditional_formatting',
         'tap',
     ];
 
@@ -60,6 +63,8 @@ final class WriteConfigParser
         'value',
         'default',
         'labels',
+        'validation',
+        'conditional',
     ];
 
     /**
@@ -188,10 +193,20 @@ final class WriteConfigParser
             ? array_values(array_map('strval', $sheetConfig['merges']))
             : [];
 
+        $images = [];
+        if (isset($sheetConfig['images']) && is_array($sheetConfig['images'])) {
+            $images = self::parseImages($sheetConfig['images'], $path->append('images'));
+        }
+
         $tap = $sheetConfig['tap'] ?? null;
         if ($tap !== null && !is_callable($tap)) {
             throw InvalidConfigException::atPath($path->append('tap'), '"tap" must be callable.');
         }
+
+        /** @var list<array<string, mixed>> $conditionalFormatting */
+        $conditionalFormatting = isset($sheetConfig['conditional_formatting']) && is_array($sheetConfig['conditional_formatting'])
+            ? array_values($sheetConfig['conditional_formatting'])
+            : [];
 
         /** @var bool|null $autoSize */
         $autoSize = array_key_exists('auto_size', $sheetConfig) ? (bool) $sheetConfig['auto_size'] : null;
@@ -217,6 +232,8 @@ final class WriteConfigParser
             autoSizeMaxRows: (int) ($sheetConfig['auto_size_max_rows'] ?? 5000),
             rowHeight: isset($sheetConfig['row_height']) ? (float) $sheetConfig['row_height'] : null,
             merges: $merges,
+            images: $images,
+            conditionalFormatting: $conditionalFormatting,
             tap: $tap,
         );
     }
@@ -289,6 +306,8 @@ final class WriteConfigParser
                 labels: isset($colDef['labels']) && is_array($colDef['labels']) ? $colDef['labels'] : null,
                 align: isset($colDef['align']) && is_string($colDef['align']) ? strtolower(trim($colDef['align'])) : null,
                 wrap: isset($colDef['wrap']) ? (bool) $colDef['wrap'] : null,
+                validation: self::resolveValidation($colDef),
+                conditional: isset($colDef['conditional']) && is_array($colDef['conditional']) ? $colDef['conditional'] : null,
                 options: $colDef,
             );
         }
@@ -310,5 +329,83 @@ final class WriteConfigParser
         }
 
         return $style !== [] ? $style : null;
+    }
+    /**
+     * @param array<string, mixed> $colDef
+     * @return array<string, mixed>|null
+     */
+    private static function resolveValidation(array $colDef): ?array
+    {
+        if (!isset($colDef['validation'])) {
+            return null;
+        }
+
+        $val = $colDef['validation'];
+        if (is_string($val)) {
+            return [
+                'type' => 'list',
+                'options' => array_map('trim', explode(',', $val)),
+            ];
+        }
+
+        if (is_array($val)) {
+            if (array_is_list($val)) {
+                return [
+                    'type' => 'list',
+                    'options' => $val,
+                ];
+            }
+
+            return $val;
+        }
+
+        return null;
+    }
+    /**
+     * @param array<array-key, mixed> $rawImages
+     * @return list<ImageDefinition>
+     */
+    private static function parseImages(array $rawImages, ConfigPath $path): array
+    {
+        $images = [];
+
+        // Single image definition: ['path' => '...']
+        if (isset($rawImages['path']) && is_string($rawImages['path'])) {
+            $rawImages = [$rawImages];
+        }
+
+        foreach ($rawImages as $idx => $imgDef) {
+            $subPath = $path->append((string) $idx);
+            if (is_string($imgDef)) {
+                $imgDef = ['path' => $imgDef];
+            }
+            if (!is_array($imgDef)) {
+                throw InvalidConfigException::atPath($subPath, 'Image definition must be a string path or an array.');
+            }
+
+            $imgPath = (string) ($imgDef['path'] ?? '');
+            if ($imgPath === '') {
+                throw InvalidConfigException::atPath($subPath->append('path'), 'Image "path" is required.');
+            }
+            if (!file_exists($imgPath)) {
+                throw InvalidConfigException::atPath($subPath->append('path'), sprintf('Image file "%s" does not exist.', $imgPath));
+            }
+
+            $cell = (string) ($imgDef['cell'] ?? $imgDef['coordinates'] ?? 'A1');
+            Coordinate::parseCell($cell);
+
+            $images[] = new ImageDefinition(
+                path: $imgPath,
+                cell: strtoupper($cell),
+                width: isset($imgDef['width']) ? (int) $imgDef['width'] : null,
+                height: isset($imgDef['height']) ? (int) $imgDef['height'] : null,
+                offsetX: (int) ($imgDef['offset_x'] ?? 0),
+                offsetY: (int) ($imgDef['offset_y'] ?? 0),
+                name: isset($imgDef['name']) ? (string) $imgDef['name'] : null,
+                description: isset($imgDef['description']) ? (string) $imgDef['description'] : null,
+            );
+        }
+
+        return $images;
     }
 }

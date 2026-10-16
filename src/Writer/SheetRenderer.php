@@ -208,6 +208,35 @@ final class SheetRenderer
                 }
             }
         }
+        // Apply column-specific data validations
+        if ($rowCount > 0 && $numColumns > 0) {
+            foreach ($columns as $idx => $col) {
+                if ($col->validation !== null) {
+                    $cIdx = $startCol + $idx;
+                    $valRange = Coordinate::formatCell($cIdx, $dataStartRow) . ':' . Coordinate::formatCell($cIdx, $dataEndRow);
+                    self::applyDataValidation($worksheet, $valRange, $col->validation);
+                }
+            }
+        }
+        // Apply column-specific conditional styles
+        if ($rowCount > 0 && $numColumns > 0) {
+            foreach ($columns as $idx => $col) {
+                if ($col->conditional !== null) {
+                    $cIdx = $startCol + $idx;
+                    $colRange = Coordinate::formatCell($cIdx, $dataStartRow) . ':' . Coordinate::formatCell($cIdx, $dataEndRow);
+                    self::applyConditionalFormatting($worksheet, $colRange, $col->conditional);
+                }
+            }
+        }
+
+        // Apply sheet-level conditional formatting
+        if ($rowCount > 0 && $definition->conditionalFormatting !== []) {
+            foreach ($definition->conditionalFormatting as $ruleDef) {
+                if (isset($ruleDef['range'])) {
+                    self::applyConditionalFormatting($worksheet, (string) $ruleDef['range'], [$ruleDef]);
+                }
+            }
+        }
 
         // 4. Render Totals row
         $totalsRow = null;
@@ -295,6 +324,34 @@ final class SheetRenderer
         foreach ($definition->merges as $mergeRange) {
             $worksheet->mergeCells($mergeRange);
         }
+        // 6.5. Render Images / Logos
+        foreach ($definition->images as $imgDef) {
+            $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+            if ($imgDef->name !== null) {
+                $drawing->setName($imgDef->name);
+            }
+            if ($imgDef->description !== null) {
+                $drawing->setDescription($imgDef->description);
+            }
+            $drawing->setPath($imgDef->path);
+            $drawing->setCoordinates($imgDef->cell);
+            if ($imgDef->width !== null && $imgDef->height !== null) {
+                $drawing->setResizeProportional(false);
+            }
+            if ($imgDef->width !== null) {
+                $drawing->setWidth($imgDef->width);
+            }
+            if ($imgDef->height !== null) {
+                $drawing->setHeight($imgDef->height);
+            }
+            if ($imgDef->offsetX !== 0) {
+                $drawing->setOffsetX($imgDef->offsetX);
+            }
+            if ($imgDef->offsetY !== 0) {
+                $drawing->setOffsetY($imgDef->offsetY);
+            }
+            $drawing->setWorksheet($worksheet);
+        }
 
         $dataRange = Coordinate::formatCell($startCol, $dataStartRow) . ':' . Coordinate::formatCell($endCol, $dataEndRow);
 
@@ -359,5 +416,127 @@ final class SheetRenderer
         }
 
         return [];
+    }
+    /**
+     * @param array<string, mixed> $config
+     */
+    private static function applyDataValidation(Worksheet $sheet, string $range, array $config): void
+    {
+        $validation = new \PhpOffice\PhpSpreadsheet\Cell\DataValidation();
+        $type = strtolower((string) ($config['type'] ?? 'list'));
+        $allowBlank = (bool) ($config['allow_blank'] ?? true);
+        $errorTitle = (string) ($config['error_title'] ?? 'Invalid input');
+        $errorMessage = (string) ($config['error_message'] ?? 'Value is not allowed');
+
+        $validation->setAllowBlank($allowBlank);
+        $validation->setShowErrorMessage(true);
+        $validation->setErrorTitle($errorTitle);
+        $validation->setError($errorMessage);
+
+        if ($type === 'list' || $type === 'dropdown') {
+            $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+            $validation->setShowDropDown(true);
+            $options = $config['options'] ?? [];
+            if (is_array($options)) {
+                $formula = '"' . implode(',', array_map('strval', $options)) . '"';
+                $validation->setFormula1($formula);
+            } elseif (is_string($options)) {
+                $validation->setFormula1('"' . $options . '"');
+            }
+        } elseif ($type === 'whole' || $type === 'integer') {
+            $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_WHOLE);
+            $min = (string) ($config['min'] ?? '0');
+            $max = isset($config['max']) ? (string) $config['max'] : null;
+            if ($max !== null) {
+                $validation->setOperator(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::OPERATOR_BETWEEN);
+                $validation->setFormula1($min);
+                $validation->setFormula2($max);
+            } else {
+                $validation->setOperator(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::OPERATOR_GREATERTHANOREQUAL);
+                $validation->setFormula1($min);
+            }
+        } elseif ($type === 'decimal') {
+            $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_DECIMAL);
+            $min = (string) ($config['min'] ?? '0');
+            $max = isset($config['max']) ? (string) $config['max'] : null;
+            if ($max !== null) {
+                $validation->setOperator(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::OPERATOR_BETWEEN);
+                $validation->setFormula1($min);
+                $validation->setFormula2($max);
+            } else {
+                $validation->setOperator(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::OPERATOR_GREATERTHANOREQUAL);
+                $validation->setFormula1($min);
+            }
+        } elseif ($type === 'text_length') {
+            $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_TEXTLENGTH);
+            $min = (string) ($config['min'] ?? '1');
+            $max = (string) ($config['max'] ?? '255');
+            $validation->setOperator(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::OPERATOR_BETWEEN);
+            $validation->setFormula1($min);
+            $validation->setFormula2($max);
+        }
+
+        $sheet->setDataValidation($range, $validation);
+    }
+    /**
+     * @param array<array-key, mixed> $rules
+     */
+    private static function applyConditionalFormatting(Worksheet $sheet, string $range, array $rules): void
+    {
+        $ruleList = array_is_list($rules) && isset($rules[0]) && is_array($rules[0]) ? $rules : [$rules];
+        $existing = $sheet->getStyle($range)->getConditionalStyles();
+
+        foreach ($ruleList as $rule) {
+            if (!is_array($rule)) {
+                continue;
+            }
+
+            $conditional = new \PhpOffice\PhpSpreadsheet\Style\Conditional();
+            $conditional->setConditionType(\PhpOffice\PhpSpreadsheet\Style\Conditional::CONDITION_CELLIS);
+
+            $opRaw = strtolower((string) ($rule['operator'] ?? '<'));
+            $operator = match ($opRaw) {
+                '<', 'less_than' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_LESSTHAN,
+                '<=', 'less_than_or_equal' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_LESSTHANOREQUAL,
+                '>', 'greater_than' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_GREATERTHAN,
+                '>=', 'greater_than_or_equal' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_GREATERTHANOREQUAL,
+                '==', '=', 'equal' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_EQUAL,
+                '!=', '<>', 'not_equal' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_NOTEQUAL,
+                'between' => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_BETWEEN,
+                default => \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_EQUAL,
+            };
+
+            $conditional->setOperatorType($operator);
+
+            if ($operator === \PhpOffice\PhpSpreadsheet\Style\Conditional::OPERATOR_BETWEEN) {
+                $conditions = isset($rule['value']) && is_array($rule['value']) ? $rule['value'] : [$rule['min'] ?? '0', $rule['max'] ?? '0'];
+                $conditional->setConditions(array_map('strval', $conditions));
+            } else {
+                $val = (string) ($rule['value'] ?? '0');
+                $conditional->addCondition($val);
+            }
+
+            // Style configuration
+            if (isset($rule['color'])) {
+                $color = \ExcelHelper\Support\Color::normalize((string) $rule['color']);
+                $conditional->getStyle()->getFont()->getColor()->setRGB($color);
+            }
+            if (!empty($rule['bold'])) {
+                $conditional->getStyle()->getFont()->setBold(true);
+            }
+            if (!empty($rule['italic'])) {
+                $conditional->getStyle()->getFont()->setItalic(true);
+            }
+            if (isset($rule['bg'])) {
+                $bg = \ExcelHelper\Support\Color::normalize((string) $rule['bg']);
+                $conditional->getStyle()->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID);
+                $conditional->getStyle()->getFill()->getEndColor()->setRGB($bg);
+                $conditional->getStyle()->getFill()->getStartColor()->setRGB($bg);
+            }
+
+            $existing[] = $conditional;
+        }
+
+        $sheet->getStyle($range)->setConditionalStyles($existing);
     }
 }

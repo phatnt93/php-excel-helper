@@ -331,6 +331,86 @@ $headers = Excel::headers('so-tay.xlsx', row: 1);
 
 ---
 
+## Điền Dữ Liệu Vào File Mẫu (`Excel::template`)
+
+Điền dữ liệu vào các tệp Excel mẫu có sẵn (hóa đơn, phiếu thu, hợp đồng) mà vẫn giữ nguyên logo, phông chữ, định dạng ô và các công thức phức tạp:
+
+```php
+Excel::template('mau_hoa_don.xlsx')
+    ->set('customer_name', 'Công ty Cổ phần Công nghệ ABC')
+    ->set('invoice_no', 'HD-2026-001')
+    ->setValues([
+        'ngay_lap' => '16/10/2026',
+        'ghi_chu' => 'Đã thanh toán chuyển khoản',
+        'B15' => 'Ghi trực tiếp vào tọa độ ô',
+    ])
+    ->insertTable('item_name', [
+        ['item_name' => 'Gói Hosting Doanh nghiệp', 'qty' => 1, 'price' => 2500000],
+        ['item_name' => 'Tên miền .com.vn', 'qty' => 2, 'price' => 750000],
+    ])
+    ->save('hoa_don_001.xlsx');
+```
+
+* `insertTable()` tự động kế thừa định dạng ô và tự động đẩy các dòng chân bảng / dòng tổng phía dưới xuống!
+
+---
+
+## Các Tính Năng Nâng Cao v1.1.0
+
+### 1. Đọc Theo Luồng O(1) RAM (`Excel::stream`)
+
+Đọc tệp XLSX và CSV siêu lớn theo từng dòng bằng PHP `Generator` với mức tiêu hao bộ nhớ không đổi:
+
+```php
+foreach (Excel::stream('file_khong_lo.xlsx', ['start_row' => 2]) as $rowNumber => $row) {
+    // Xử lý từng dòng mượt mà trên server RAM thấp
+}
+```
+
+### 2. Chèn Ảnh & Logo
+
+Chèn logo công ty, ảnh sản phẩm với tọa độ ô và kích thước pixel:
+
+```php
+Excel::write([
+    'images' => [
+        ['path' => 'assets/logo.png', 'cell' => 'A1', 'width' => 120, 'height' => 50],
+    ],
+    'columns' => [...],
+    'data' => [...],
+])->save('bao_cao.xlsx');
+```
+
+### 3. Ràng Buộc Dữ Liệu & Dropdown List (Data Validation)
+
+Tạo danh sách chọn dropdown và ràng buộc dữ liệu trực tiếp trong Excel:
+
+```php
+'status' => [
+    'header' => 'Trạng thái',
+    'validation' => ['Chờ duyệt', 'Đã duyệt', 'Từ chối'], // Dropdown list
+],
+'age' => [
+    'header' => 'Tuổi',
+    'validation' => ['type' => 'integer', 'min' => 18, 'max' => 65],
+],
+```
+
+### 4. Định Dạng Có Điều Kiện (Conditional Formatting)
+
+Tự động đổi màu ô dựa trên giá trị:
+
+```php
+'balance' => [
+    'header' => 'Số dư',
+    'conditional' => [
+        ['operator' => '<', 'value' => 0, 'color' => 'FF0000', 'bg' => 'FFE0E0', 'bold' => true],
+    ],
+],
+```
+
+---
+
 ## Giấy phép
 
 Mã nguồn được phát hành theo [Giấy phép MIT](LICENSE).

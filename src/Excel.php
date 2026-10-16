@@ -64,6 +64,24 @@ final class Excel
     {
         return ExcelReader::read($path, $options);
     }
+    /**
+     * Stream rows from an Excel (XLSX) or CSV file one-by-one as a Generator.
+     * Provides true O(1) memory consumption for ultra-large files.
+     *
+     * @param array<string, mixed> $options
+     * @return \Generator<int, array<string, mixed>>
+     */
+    public static function stream(string $path, array $options = []): \Generator
+    {
+        $opts = \ExcelHelper\Config\ReadConfigParser::parse($options);
+        $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+
+        if ($ext === 'csv') {
+            return \ExcelHelper\Reader\CsvStreamReader::stream($path, $opts);
+        }
+
+        return \ExcelHelper\Reader\FastXlsxStreamReader::stream($path, $opts);
+    }
 
     /**
      * Begin a fluent reader builder.
@@ -130,6 +148,13 @@ final class Excel
     public static function headers(string $path, int $row = 1, int|string $sheet = 0): array
     {
         return ExcelReader::headers($path, $row, $sheet);
+    }
+    /**
+     * Open an Excel spreadsheet template to fill placeholders, cell values, and tables.
+     */
+    public static function template(string $templatePath): \ExcelHelper\Template\TemplateProcessor
+    {
+        return new \ExcelHelper\Template\TemplateProcessor($templatePath);
     }
 
     /**

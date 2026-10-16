@@ -19,6 +19,8 @@ final class WriteColumn
      * @param (callable(mixed, array<string, mixed>): mixed)|null $value Value accessor callback
      * @param mixed $default Fallback value when null
      * @param array<string, mixed>|null $labels Boolean label mapping [true => 'Yes', false => 'No']
+     * @param array<string, mixed>|null $validation Data validation configuration
+     * @param list<array<string, mixed>>|array<string, mixed>|null $conditional Conditional formatting rules
      * @param array<string, mixed> $options Additional options
      */
     public function __construct(
@@ -33,6 +35,8 @@ final class WriteColumn
         public readonly ?array $labels = null,
         public readonly ?string $align = null,
         public readonly ?bool $wrap = null,
+        public readonly ?array $validation = null,
+        public readonly ?array $conditional = null,
         public readonly array $options = [],
     ) {}
 }
