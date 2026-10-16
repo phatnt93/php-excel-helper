@@ -277,7 +277,7 @@ final class ReaderIntegrationTest extends TestCase
                 'B' => [
                     'key' => 'age',
                     'type' => 'int',
-                    'validate' => static fn(int $v, RowContext $ctx): true|string => $v >= 0 ? true : 'Age cannot be negative',
+                    'validate' => static fn(int $v, RowContext $ctx): bool|string => $v >= 0 ? true : 'Age cannot be negative',
                     'default' => 0,
                 ],
             ],
