@@ -392,7 +392,7 @@ final class FastXlsxStreamReader
                 } elseif ($type === 'b') {
                     $cellVal = ($vVal === '1');
                 } elseif ($vVal !== null && $vVal !== '') {
-                    $cellVal = is_numeric($vVal) ? (str_contains((string) $vVal, '.') ? (float) $vVal : (int) $vVal) : $vVal;
+                    $cellVal = is_numeric($vVal) ? $vVal + 0 : $vVal;
                 }
 
                 $rawRow[$cIdx] = $cellVal;

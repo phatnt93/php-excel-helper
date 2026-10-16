@@ -281,6 +281,56 @@ final class FastXlsxStreamReaderTest extends TestCase
         $this->assertSame($readAlpha, $streamAlpha);
         $this->assertSame($readBeta, $streamBeta);
     }
+    public function testNumericDecodingScientificAndLargeNumbersParity(): void
+    {
+        $savePath = $this->tempPath('xlsx');
+
+        $ss = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+        $sheet = $ss->getActiveSheet();
+        $sheet->setCellValue('A1', 'Placeholder');
+        $sheet->setCellValue('B1', 42);
+        $sheet->setCellValue('C1', 3.14159);
+        $sheet->setCellValue('D1', -100);
+        $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($ss);
+        $writer->save($savePath);
+        $ss->disconnectWorksheets();
+
+        // Inject raw numeric <v>1E-5</v> into sheet1.xml
+        $zip = new \ZipArchive();
+        $zip->open($savePath);
+        $sheetXml = (string) $zip->getFromName('xl/worksheets/sheet1.xml');
+        $sheetXml = preg_replace('/<c r="A1"[^>]*>.*?<\/c>/s', '<c r="A1"><v>1E-5</v></c>', $sheetXml);
+        $zip->addFromString('xl/worksheets/sheet1.xml', $sheetXml);
+        $zip->close();
+
+        $colsConfig = [
+            'columns' => [
+                'A' => ['key' => 'sci', 'type' => 'float'],
+                'B' => ['key' => 'int', 'type' => 'int'],
+                'C' => ['key' => 'flt', 'type' => 'float'],
+                'D' => ['key' => 'neg', 'type' => 'int'],
+            ],
+            'start_row' => 1,
+        ];
+
+        // 1. Excel::read
+        $readResult = Excel::read($savePath, $colsConfig)->rows()[0];
+
+        // 2. Excel::stream
+        $streamResult = iterator_to_array(Excel::stream($savePath, $colsConfig))[1];
+
+        // 3. FastXlsxStreamReader::read
+        $fastReadResult = FastXlsxStreamReader::read($savePath, ReadConfigParser::parse($colsConfig))->rows()[0];
+
+        // Assert scientific notation is correctly decoded to float (1.0E-5), NOT int (0)
+        $this->assertSame(1.0E-5, $readResult['sci']);
+        $this->assertSame(1.0E-5, $streamResult['sci']);
+        $this->assertSame(1.0E-5, $fastReadResult['sci']);
+
+        // Assert 100% parity across all three methods
+        $this->assertSame($readResult, $streamResult);
+        $this->assertSame($readResult, $fastReadResult);
+    }
 
     public function testCsvStreamLazinessAndBoundedMemory(): void
     {
